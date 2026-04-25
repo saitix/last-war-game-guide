@@ -30,11 +30,24 @@ import {
   Crosshair,
   Flag,
   Target,
-  Lightning
+  Lightning,
+  Star,
+  Heart,
+  Flame,
+  Skull,
+  FirstAid,
+  Gauge,
+  Sneaker,
+  UserCircle,
+  ArrowUp,
+  ArrowDown,
+  Sparkle
 } from '@phosphor-icons/react'
 
 type Category = 'combat' | 'defense' | 'strategy' | 'events' | 'resources' | 'community'
 type Theme = 'light' | 'dark'
+type HeroRarity = 'common' | 'rare' | 'epic' | 'legendary'
+type HeroRole = 'tank' | 'damage' | 'support' | 'specialist'
 
 interface Guide {
   id: string
@@ -56,6 +69,34 @@ interface UserTip {
 interface FAQ {
   question: string
   answer: string
+}
+
+interface HeroAbility {
+  name: string
+  description: string
+  cooldown?: number
+  type: 'active' | 'passive'
+}
+
+interface HeroStats {
+  attack: number
+  defense: number
+  hp: number
+  speed: number
+}
+
+interface Hero {
+  id: string
+  name: string
+  rarity: HeroRarity
+  role: HeroRole
+  stats: HeroStats
+  abilities: HeroAbility[]
+  description: string
+  strengths: string[]
+  weaknesses: string[]
+  bestWith: string[]
+  tacticalTips: string[]
 }
 
 function App() {
@@ -228,6 +269,350 @@ function App() {
     }
   ]
 
+  const heroes: Hero[] = [
+    {
+      id: '1',
+      name: 'Commander Marcus',
+      rarity: 'legendary',
+      role: 'tank',
+      stats: {
+        attack: 850,
+        defense: 1250,
+        hp: 8500,
+        speed: 65
+      },
+      abilities: [
+        {
+          name: 'Fortified Defense',
+          description: 'Increases all allied troops defense by 25% for 10 seconds. During this time, Marcus takes 40% reduced damage.',
+          cooldown: 45,
+          type: 'active'
+        },
+        {
+          name: 'Shield Wall',
+          description: 'When HP drops below 50%, automatically activates a shield absorbing 2000 damage for 8 seconds.',
+          type: 'passive'
+        },
+        {
+          name: 'Tactical Commander',
+          description: 'All infantry units under his command gain +15% HP and +10% defense.',
+          type: 'passive'
+        }
+      ],
+      description: 'A veteran commander known for his defensive prowess and ability to hold strategic positions against overwhelming odds.',
+      strengths: ['Exceptional durability', 'Strong defensive buffs', 'Great for sieges', 'Protects allied troops'],
+      weaknesses: ['Low mobility', 'Moderate damage output', 'Vulnerable to sustained ranged attacks'],
+      bestWith: ['Elena Frost (for balanced offense/defense)', 'Infantry-heavy armies', 'Defensive formations'],
+      tacticalTips: [
+        'Position Marcus at the front line to absorb damage while ranged units deal damage from behind',
+        'Use Fortified Defense when facing burst damage or artillery strikes',
+        'Pair with healing support heroes to maximize his survivability',
+        'Best deployed in chokepoints and defensive scenarios'
+      ]
+    },
+    {
+      id: '2',
+      name: 'Elena Frost',
+      rarity: 'legendary',
+      role: 'damage',
+      stats: {
+        attack: 1450,
+        defense: 720,
+        hp: 5200,
+        speed: 95
+      },
+      abilities: [
+        {
+          name: 'Arctic Strike',
+          description: 'Deals 350% attack damage to a single target and slows their movement speed by 60% for 5 seconds.',
+          cooldown: 35,
+          type: 'active'
+        },
+        {
+          name: 'Freezing Aura',
+          description: 'Enemies within range have their attack speed reduced by 20%. This effect stacks with other slow effects.',
+          type: 'passive'
+        },
+        {
+          name: 'Critical Precision',
+          description: 'Increases critical hit chance by 25% and critical damage by 40%.',
+          type: 'passive'
+        }
+      ],
+      description: 'An elite sniper specialist who excels at eliminating high-value targets and controlling enemy movement with devastating precision.',
+      strengths: ['Highest single-target damage', 'Excellent mobility', 'Strong crowd control', 'Great for assassinating enemy heroes'],
+      weaknesses: ['Low HP pool', 'Vulnerable in close combat', 'Requires good positioning'],
+      bestWith: ['Commander Marcus (provides protection)', 'Ranged unit compositions', 'Flanking strategies'],
+      tacticalTips: [
+        'Always keep Elena at maximum range to maximize damage while minimizing risk',
+        'Use Arctic Strike on enemy damage dealers or heroes first',
+        'Position her behind tanks or on elevated terrain for protection',
+        'Extremely effective against slow-moving tank heroes',
+        'Save Arctic Strike for crucial moments rather than spamming on cooldown'
+      ]
+    },
+    {
+      id: '3',
+      name: 'Dr. Sarah Chen',
+      rarity: 'epic',
+      role: 'support',
+      stats: {
+        attack: 620,
+        defense: 880,
+        hp: 6100,
+        speed: 75
+      },
+      abilities: [
+        {
+          name: 'Mass Regeneration',
+          description: 'Heals all allied troops for 15% of their max HP and grants health regeneration of 2% per second for 10 seconds.',
+          cooldown: 55,
+          type: 'active'
+        },
+        {
+          name: 'Medical Expertise',
+          description: 'Reduces wounded troop casualties by 30%. More troops survive battles and can be healed at the hospital.',
+          type: 'passive'
+        },
+        {
+          name: 'Combat Medic',
+          description: 'Allies within range receive continuous healing of 1% HP per second.',
+          type: 'passive'
+        }
+      ],
+      description: 'A brilliant field medic whose advanced medical technology keeps armies fighting longer and reduces casualties significantly.',
+      strengths: ['Outstanding healing capabilities', 'Reduces troop losses', 'Sustained support', 'Great for long battles'],
+      weaknesses: ['Low damage output', 'Requires protection', 'Minimal crowd control'],
+      bestWith: ['Commander Marcus (synergizes with high HP)', 'Tank-heavy compositions', 'Extended sieges'],
+      tacticalTips: [
+        'Dr. Chen is essential for resource-efficient warfare as she dramatically reduces troop losses',
+        'Keep her in the middle of your formation, protected by tanks',
+        'Use Mass Regeneration right after enemies use their burst damage abilities',
+        'Invaluable for PvP and siege situations where preserving troops matters',
+        'Her passive makes her worthwhile even if she doesn\'t survive the battle'
+      ]
+    },
+    {
+      id: '4',
+      name: 'Viktor "The Wolf" Kozlov',
+      rarity: 'legendary',
+      role: 'specialist',
+      stats: {
+        attack: 1280,
+        defense: 950,
+        hp: 6800,
+        speed: 110
+      },
+      abilities: [
+        {
+          name: 'Guerrilla Assault',
+          description: 'Teleports behind enemy lines, dealing 280% attack damage to all nearby enemies and increasing movement speed by 50% for 8 seconds.',
+          cooldown: 40,
+          type: 'active'
+        },
+        {
+          name: 'Pack Hunter',
+          description: 'Damage increases by 8% for each enemy hero present, up to 32% with 4 enemy heroes.',
+          type: 'passive'
+        },
+        {
+          name: 'Evasive Maneuvers',
+          description: 'Has a 30% chance to dodge incoming attacks completely. This chance increases to 50% when below 40% HP.',
+          type: 'passive'
+        }
+      ],
+      description: 'A master of guerrilla warfare who strikes from unexpected angles and thrives in chaotic multi-hero battles.',
+      strengths: ['Extreme mobility', 'Excels in multi-hero fights', 'Unpredictable', 'Great for disruption'],
+      weaknesses: ['Requires skill to master', 'Risky playstyle', 'Less effective against single targets'],
+      bestWith: ['Fast cavalry units', 'Hit-and-run tactics', 'Flanking maneuvers'],
+      tacticalTips: [
+        'Viktor excels at disrupting enemy backlines - use him to target healers and ranged damage dealers',
+        'Save Guerrilla Assault for critical moments when you need to eliminate a priority target',
+        'Most effective in battles with multiple enemy heroes due to Pack Hunter',
+        'His high mobility makes him perfect for raid attacks and quick strikes',
+        'Use hit-and-run tactics to maximize his evasion passive'
+      ]
+    },
+    {
+      id: '5',
+      name: 'Captain Isabella Rodriguez',
+      rarity: 'epic',
+      role: 'damage',
+      stats: {
+        attack: 1180,
+        defense: 780,
+        hp: 5600,
+        speed: 85
+      },
+      abilities: [
+        {
+          name: 'Artillery Barrage',
+          description: 'Calls in an artillery strike on target area, dealing 220% attack damage to all enemies in a large radius. Burns the ground, dealing additional damage over 6 seconds.',
+          cooldown: 50,
+          type: 'active'
+        },
+        {
+          name: 'Tactical Bombardment',
+          description: 'All ranged attacks have a 25% chance to deal splash damage to nearby enemies for 50% of the damage dealt.',
+          type: 'passive'
+        },
+        {
+          name: 'Fire Support',
+          description: 'Increases attack range of all allied ranged units by 20%.',
+          type: 'passive'
+        }
+      ],
+      description: 'An artillery specialist who brings devastating area-of-effect damage to the battlefield, perfect for breaking enemy formations.',
+      strengths: ['Excellent AoE damage', 'Strong against grouped enemies', 'Good range', 'Synergizes with ranged units'],
+      weaknesses: ['Vulnerable to fast attackers', 'Long ability cooldown', 'Less effective against spread formations'],
+      bestWith: ['Ranged-heavy armies', 'Elena Frost (double ranged power)', 'Siege scenarios'],
+      tacticalTips: [
+        'Artillery Barrage is devastating against tightly grouped enemy formations',
+        'Use her increased range buff to kite melee-heavy enemy armies',
+        'Extremely effective in siege defense where enemies cluster at chokepoints',
+        'Pair with slow/freeze effects to keep enemies in the artillery strike zone',
+        'Position her safely behind your front line to maximize her damage output'
+      ]
+    },
+    {
+      id: '6',
+      name: 'Sergeant James "Bull" Turner',
+      rarity: 'rare',
+      role: 'tank',
+      stats: {
+        attack: 720,
+        defense: 1050,
+        hp: 7200,
+        speed: 60
+      },
+      abilities: [
+        {
+          name: 'Defensive Stance',
+          description: 'Increases defense by 50% and taunts nearby enemies to attack him for 8 seconds. During this time, damage taken is reduced by 30%.',
+          cooldown: 50,
+          type: 'active'
+        },
+        {
+          name: 'Stubborn Resilience',
+          description: 'Cannot be killed for 3 seconds after reaching 1 HP. This effect has a 90 second cooldown.',
+          type: 'passive'
+        },
+        {
+          name: 'Infantry Training',
+          description: 'Infantry units under his command gain +12% defense.',
+          type: 'passive'
+        }
+      ],
+      description: 'A tough-as-nails sergeant who refuses to go down and protects his troops with unwavering determination.',
+      strengths: ['Great survivability', 'Reliable tank option', 'Easy to obtain', 'Good for beginners'],
+      weaknesses: ['Limited utility', 'Low damage', 'Basic abilities compared to legendary tanks'],
+      bestWith: ['Infantry armies', 'New players', 'Budget-friendly compositions'],
+      tacticalTips: [
+        'Excellent starter tank hero that remains useful throughout early and mid-game',
+        'Use Defensive Stance when enemies focus fire on him to maximize damage absorption',
+        'His survivability passive can turn the tide of close battles',
+        'Cost-effective alternative to legendary tanks for F2P players',
+        'Pair with damage dealers who can capitalize on the time Bull buys them'
+      ]
+    },
+    {
+      id: '7',
+      name: 'Phantom',
+      rarity: 'legendary',
+      role: 'specialist',
+      stats: {
+        attack: 1350,
+        defense: 650,
+        hp: 4800,
+        speed: 125
+      },
+      abilities: [
+        {
+          name: 'Shadow Strike',
+          description: 'Becomes invisible for 6 seconds, then strikes dealing 400% attack damage. If this kills the target, cooldown is reduced by 50%.',
+          cooldown: 38,
+          type: 'active'
+        },
+        {
+          name: 'Assassin\'s Mark',
+          description: 'Marks the enemy hero with lowest HP. Deals 30% increased damage to marked targets.',
+          type: 'passive'
+        },
+        {
+          name: 'Shadow Veil',
+          description: 'Has a 40% chance to avoid all damage from the first attack after not being attacked for 5 seconds.',
+          type: 'passive'
+        }
+      ],
+      description: 'A mysterious assassin who specializes in eliminating weakened targets and operating in the shadows.',
+      strengths: ['Ultimate hero killer', 'Highest mobility', 'Stealth mechanics', 'Snowball potential with resets'],
+      weaknesses: ['Lowest HP in game', 'Requires perfect timing', 'Ineffective if focused'],
+      bestWith: ['AoE damage dealers who weaken multiple targets', 'Fast strike teams', 'Cleanup strategies'],
+      tacticalTips: [
+        'Phantom is designed for cleaning up damaged enemies - let allies damage targets first',
+        'The cooldown reset mechanic can create devastating chain kills in the right situation',
+        'Most effective when enemies are already engaged with your main army',
+        'Extremely high skill cap - not recommended for beginners',
+        'Use invisibility to reposition or escape, not just for damage'
+      ]
+    },
+    {
+      id: '8',
+      name: 'Major Liu Wei',
+      rarity: 'epic',
+      role: 'support',
+      stats: {
+        attack: 780,
+        defense: 920,
+        hp: 6400,
+        speed: 70
+      },
+      abilities: [
+        {
+          name: 'Tactical Orders',
+          description: 'All allied units gain +35% attack and +25% attack speed for 12 seconds.',
+          cooldown: 60,
+          type: 'active'
+        },
+        {
+          name: 'Battle Coordination',
+          description: 'Increases troop march speed by 15% and reduces training time by 10%.',
+          type: 'passive'
+        },
+        {
+          name: 'Strategic Mind',
+          description: 'Allied heroes gain +10% to all stats when fighting alongside Major Liu.',
+          type: 'passive'
+        }
+      ],
+      description: 'A brilliant strategist whose tactical acumen enhances all friendly forces on the battlefield.',
+      strengths: ['Powerful offensive buffs', 'Boosts all allies', 'March speed bonus', 'Versatile support'],
+      weaknesses: ['No healing', 'Requires allies to be effective', 'Moderate survivability'],
+      bestWith: ['Damage-focused heroes', 'Mixed army compositions', 'Aggressive strategies'],
+      tacticalTips: [
+        'Major Liu turns good armies into great ones with his massive buff potential',
+        'Use Tactical Orders at the start of engagements for maximum impact',
+        'His march speed bonus makes him valuable for both PvE and PvP scenarios',
+        'Pairs exceptionally well with Elena Frost to create devastating burst damage',
+        'Essential for speed-running events and timed challenges'
+      ]
+    }
+  ]
+
+  const rarityConfig = {
+    common: { color: 'text-gray-500', bgColor: 'bg-gray-500/10', label: 'Common' },
+    rare: { color: 'text-blue-500', bgColor: 'bg-blue-500/10', label: 'Rare' },
+    epic: { color: 'text-purple-500', bgColor: 'bg-purple-500/10', label: 'Epic' },
+    legendary: { color: 'text-amber-500', bgColor: 'bg-amber-500/10', label: 'Legendary' }
+  }
+
+  const roleConfig = {
+    tank: { icon: Shield, color: 'text-blue-500', label: 'Tank' },
+    damage: { icon: Sword, color: 'text-red-500', label: 'Damage' },
+    support: { icon: Heart, color: 'text-green-500', label: 'Support' },
+    specialist: { icon: Sparkle, color: 'text-purple-500', label: 'Specialist' }
+  }
+
   const categoryConfig = {
     combat: { icon: Sword, label: 'Combat', color: 'text-red-500' },
     defense: { icon: Shield, label: 'Defense', color: 'text-blue-500' },
@@ -276,6 +661,26 @@ function App() {
     return filtered
   }
 
+  const filterHeroes = (heroList: Hero[]) => {
+    let filtered = heroList
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(hero => 
+        hero.name.toLowerCase().includes(query) ||
+        hero.description.toLowerCase().includes(query) ||
+        hero.role.toLowerCase().includes(query) ||
+        hero.rarity.toLowerCase().includes(query) ||
+        hero.abilities.some(ability => 
+          ability.name.toLowerCase().includes(query) ||
+          ability.description.toLowerCase().includes(query)
+        )
+      )
+    }
+
+    return filtered
+  }
+
   const handleSubmitTip = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
@@ -309,6 +714,7 @@ function App() {
 
   const filteredGuides = filterContent(guides)
   const filteredTips = filterTips(userTips)
+  const filteredHeroes = filterHeroes(heroes)
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
@@ -480,8 +886,9 @@ function App() {
 
           <div className="max-w-7xl mx-auto py-8 px-4 md:px-8">
             <Tabs defaultValue="guides" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-8">
+              <TabsList className="grid w-full grid-cols-4 mb-8">
                 <TabsTrigger value="guides">Official Guides</TabsTrigger>
+                <TabsTrigger value="heroes">Heroes</TabsTrigger>
                 <TabsTrigger value="community">Community Tips</TabsTrigger>
                 <TabsTrigger value="faq">FAQ</TabsTrigger>
               </TabsList>
@@ -517,6 +924,178 @@ function App() {
                                   {tag}
                                 </Badge>
                               ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="heroes" className="space-y-6">
+                {filteredHeroes.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <UserCircle size={48} className="text-muted-foreground mb-4" />
+                      <p className="text-lg font-medium mb-2">No heroes found</p>
+                      <p className="text-muted-foreground text-center">Try adjusting your search</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {filteredHeroes.map((hero) => {
+                      const rarityStyle = rarityConfig[hero.rarity]
+                      const roleStyle = roleConfig[hero.role]
+                      const RoleIcon = roleStyle.icon
+                      
+                      return (
+                        <Card key={hero.id} className="transition-all hover:shadow-lg overflow-hidden">
+                          <div className={`h-2 ${rarityStyle.bgColor}`} />
+                          <CardHeader>
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-16 h-16 rounded-full ${rarityStyle.bgColor} flex items-center justify-center`}>
+                                  <RoleIcon weight="fill" className={roleStyle.color} size={32} />
+                                </div>
+                                <div>
+                                  <CardTitle className="text-2xl mb-1">{hero.name}</CardTitle>
+                                  <div className="flex gap-2">
+                                    <Badge variant="outline" className={`${rarityStyle.color}`}>
+                                      <Star weight="fill" className="mr-1" size={12} />
+                                      {rarityStyle.label}
+                                    </Badge>
+                                    <Badge variant="secondary" className={roleStyle.color}>
+                                      {roleStyle.label}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <CardDescription className="text-base">{hero.description}</CardDescription>
+                          </CardHeader>
+                          
+                          <CardContent className="space-y-6">
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Gauge className="text-accent" size={18} weight="fill" />
+                                Combat Stats
+                              </h4>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-muted/50 rounded-lg p-3">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                                    <Sword size={16} className="text-red-500" />
+                                    Attack
+                                  </div>
+                                  <p className="text-xl font-bold">{hero.stats.attack}</p>
+                                </div>
+                                <div className="bg-muted/50 rounded-lg p-3">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                                    <Shield size={16} className="text-blue-500" />
+                                    Defense
+                                  </div>
+                                  <p className="text-xl font-bold">{hero.stats.defense}</p>
+                                </div>
+                                <div className="bg-muted/50 rounded-lg p-3">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                                    <Heart size={16} className="text-green-500" weight="fill" />
+                                    HP
+                                  </div>
+                                  <p className="text-xl font-bold">{hero.stats.hp}</p>
+                                </div>
+                                <div className="bg-muted/50 rounded-lg p-3">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                                    <Sneaker size={16} className="text-yellow-500" />
+                                    Speed
+                                  </div>
+                                  <p className="text-xl font-bold">{hero.stats.speed}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Flame className="text-accent" size={18} weight="fill" />
+                                Abilities
+                              </h4>
+                              <div className="space-y-3">
+                                {hero.abilities.map((ability, index) => (
+                                  <div key={index} className="bg-muted/30 rounded-lg p-3 border border-border">
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant={ability.type === 'active' ? 'default' : 'secondary'} className="text-xs">
+                                          {ability.type === 'active' ? 'Active' : 'Passive'}
+                                        </Badge>
+                                        <span className="font-semibold text-sm">{ability.name}</span>
+                                      </div>
+                                      {ability.cooldown && (
+                                        <span className="text-xs text-muted-foreground">{ability.cooldown}s CD</span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{ability.description}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="font-semibold mb-2 flex items-center gap-2 text-green-600">
+                                  <ArrowUp size={16} weight="bold" />
+                                  Strengths
+                                </h4>
+                                <ul className="space-y-1">
+                                  {hero.strengths.map((strength, index) => (
+                                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                                      <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" weight="fill" />
+                                      {strength}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <h4 className="font-semibold mb-2 flex items-center gap-2 text-red-600">
+                                  <ArrowDown size={16} weight="bold" />
+                                  Weaknesses
+                                </h4>
+                                <ul className="space-y-1">
+                                  {hero.weaknesses.map((weakness, index) => (
+                                    <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                                      <X size={16} className="text-red-500 mt-0.5 flex-shrink-0" weight="bold" />
+                                      {weakness}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 className="font-semibold mb-2 flex items-center gap-2">
+                                <Users size={16} className="text-accent" weight="fill" />
+                                Best With
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {hero.bestWith.map((synergy, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs">
+                                    {synergy}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="bg-accent/10 rounded-lg p-4 border border-accent/20">
+                              <h4 className="font-semibold mb-2 flex items-center gap-2 text-accent">
+                                <Target size={16} weight="fill" />
+                                Tactical Tips
+                              </h4>
+                              <ul className="space-y-2">
+                                {hero.tacticalTips.map((tip, index) => (
+                                  <li key={index} className="text-sm text-muted-foreground flex items-start gap-2">
+                                    <Lightning size={14} className="text-accent mt-0.5 flex-shrink-0" weight="fill" />
+                                    {tip}
+                                  </li>
+                                ))}
+                              </ul>
                             </div>
                           </CardContent>
                         </Card>

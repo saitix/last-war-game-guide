@@ -19,6 +19,13 @@ This is a content-focused app with search, navigation, user submissions, and the
 - **Progression**: User lands on homepage → Selects category from navigation → Views category content → Can drill down into specific guides
 - **Success criteria**: All major game topics are covered and accessible within 2 clicks
 
+### Hero & Character Guides
+- **Functionality**: Detailed hero profiles with stat breakdowns, ability descriptions, upgrade paths, and tactical recommendations
+- **Purpose**: Helps players understand hero capabilities and make informed decisions about hero development
+- **Trigger**: User navigates to Heroes tab or searches for a specific hero
+- **Progression**: User opens heroes section → Browses hero cards → Clicks hero card → Views detailed stats and abilities → Reads tactical recommendations
+- **Success criteria**: Each hero displays complete stats (Attack, Defense, HP, Speed), all abilities with descriptions, rarity tier, role classification, and strategic usage tips
+
 ### Search Functionality
 - **Functionality**: Real-time search that filters through all content (guides, FAQs, tips) as user types
 - **Purpose**: Enables quick access to specific information without browsing
