@@ -269,335 +269,83 @@ function App() {
     }
   ]
 
-  const heroes: Hero[] = [
+  const [heroes, setHeroes] = useKV<Hero[]>('heroes-data', [])
+  const [heroesLoading, setHeroesLoading] = useState(false)
+
+  useEffect(() => {
+    const loadHeroes = async () => {
+      if (heroes && heroes.length > 0) return
+      
+      setHeroesLoading(true)
+      try {
+        const websiteInfo = 'https://www.lastwartutorial.com/heroes/'
+        const prompt = `You are analyzing the Last War game heroes from ${websiteInfo}.
+
+Based on the hero information from that website, generate a comprehensive list of ALL heroes in Last War with the following details for each:
+- Hero name
+- Rarity (common/rare/epic/legendary)
+- Role (tank/damage/support/specialist)
+- Base stats at max level (attack, defense, hp, speed as numbers)
+- All abilities with names, descriptions, cooldowns (for active abilities), and type (active/passive)
+- A description of the hero
+- List of strengths (3-4 items)
+- List of weaknesses (3-4 items)
+- Best synergies with other units/heroes (2-3 items)
+- Tactical tips for using the hero effectively (3-5 tips)
+
+Return the result as a valid JSON object with a single property called "heroes" that contains the complete hero list. Use this exact format:
+
+{
+  "heroes": [
     {
-      id: '1',
-      name: 'Commander Marcus',
-      rarity: 'legendary',
-      role: 'tank',
-      stats: {
-        attack: 850,
-        defense: 1250,
-        hp: 8500,
-        speed: 65
+      "id": "1",
+      "name": "Hero Name",
+      "rarity": "legendary",
+      "role": "tank",
+      "stats": {
+        "attack": 850,
+        "defense": 1250,
+        "hp": 8500,
+        "speed": 65
       },
-      abilities: [
+      "abilities": [
         {
-          name: 'Fortified Defense',
-          description: 'Increases all allied troops defense by 25% for 10 seconds. During this time, Marcus takes 40% reduced damage.',
-          cooldown: 45,
-          type: 'active'
-        },
-        {
-          name: 'Shield Wall',
-          description: 'When HP drops below 50%, automatically activates a shield absorbing 2000 damage for 8 seconds.',
-          type: 'passive'
-        },
-        {
-          name: 'Tactical Commander',
-          description: 'All infantry units under his command gain +15% HP and +10% defense.',
-          type: 'passive'
+          "name": "Ability Name",
+          "description": "Ability description",
+          "cooldown": 45,
+          "type": "active"
         }
       ],
-      description: 'A veteran commander known for his defensive prowess and ability to hold strategic positions against overwhelming odds.',
-      strengths: ['Exceptional durability', 'Strong defensive buffs', 'Great for sieges', 'Protects allied troops'],
-      weaknesses: ['Low mobility', 'Moderate damage output', 'Vulnerable to sustained ranged attacks'],
-      bestWith: ['Elena Frost (for balanced offense/defense)', 'Infantry-heavy armies', 'Defensive formations'],
-      tacticalTips: [
-        'Position Marcus at the front line to absorb damage while ranged units deal damage from behind',
-        'Use Fortified Defense when facing burst damage or artillery strikes',
-        'Pair with healing support heroes to maximize his survivability',
-        'Best deployed in chokepoints and defensive scenarios'
-      ]
-    },
-    {
-      id: '2',
-      name: 'Elena Frost',
-      rarity: 'legendary',
-      role: 'damage',
-      stats: {
-        attack: 1450,
-        defense: 720,
-        hp: 5200,
-        speed: 95
-      },
-      abilities: [
-        {
-          name: 'Arctic Strike',
-          description: 'Deals 350% attack damage to a single target and slows their movement speed by 60% for 5 seconds.',
-          cooldown: 35,
-          type: 'active'
-        },
-        {
-          name: 'Freezing Aura',
-          description: 'Enemies within range have their attack speed reduced by 20%. This effect stacks with other slow effects.',
-          type: 'passive'
-        },
-        {
-          name: 'Critical Precision',
-          description: 'Increases critical hit chance by 25% and critical damage by 40%.',
-          type: 'passive'
-        }
-      ],
-      description: 'An elite sniper specialist who excels at eliminating high-value targets and controlling enemy movement with devastating precision.',
-      strengths: ['Highest single-target damage', 'Excellent mobility', 'Strong crowd control', 'Great for assassinating enemy heroes'],
-      weaknesses: ['Low HP pool', 'Vulnerable in close combat', 'Requires good positioning'],
-      bestWith: ['Commander Marcus (provides protection)', 'Ranged unit compositions', 'Flanking strategies'],
-      tacticalTips: [
-        'Always keep Elena at maximum range to maximize damage while minimizing risk',
-        'Use Arctic Strike on enemy damage dealers or heroes first',
-        'Position her behind tanks or on elevated terrain for protection',
-        'Extremely effective against slow-moving tank heroes',
-        'Save Arctic Strike for crucial moments rather than spamming on cooldown'
-      ]
-    },
-    {
-      id: '3',
-      name: 'Dr. Sarah Chen',
-      rarity: 'epic',
-      role: 'support',
-      stats: {
-        attack: 620,
-        defense: 880,
-        hp: 6100,
-        speed: 75
-      },
-      abilities: [
-        {
-          name: 'Mass Regeneration',
-          description: 'Heals all allied troops for 15% of their max HP and grants health regeneration of 2% per second for 10 seconds.',
-          cooldown: 55,
-          type: 'active'
-        },
-        {
-          name: 'Medical Expertise',
-          description: 'Reduces wounded troop casualties by 30%. More troops survive battles and can be healed at the hospital.',
-          type: 'passive'
-        },
-        {
-          name: 'Combat Medic',
-          description: 'Allies within range receive continuous healing of 1% HP per second.',
-          type: 'passive'
-        }
-      ],
-      description: 'A brilliant field medic whose advanced medical technology keeps armies fighting longer and reduces casualties significantly.',
-      strengths: ['Outstanding healing capabilities', 'Reduces troop losses', 'Sustained support', 'Great for long battles'],
-      weaknesses: ['Low damage output', 'Requires protection', 'Minimal crowd control'],
-      bestWith: ['Commander Marcus (synergizes with high HP)', 'Tank-heavy compositions', 'Extended sieges'],
-      tacticalTips: [
-        'Dr. Chen is essential for resource-efficient warfare as she dramatically reduces troop losses',
-        'Keep her in the middle of your formation, protected by tanks',
-        'Use Mass Regeneration right after enemies use their burst damage abilities',
-        'Invaluable for PvP and siege situations where preserving troops matters',
-        'Her passive makes her worthwhile even if she doesn\'t survive the battle'
-      ]
-    },
-    {
-      id: '4',
-      name: 'Viktor "The Wolf" Kozlov',
-      rarity: 'legendary',
-      role: 'specialist',
-      stats: {
-        attack: 1280,
-        defense: 950,
-        hp: 6800,
-        speed: 110
-      },
-      abilities: [
-        {
-          name: 'Guerrilla Assault',
-          description: 'Teleports behind enemy lines, dealing 280% attack damage to all nearby enemies and increasing movement speed by 50% for 8 seconds.',
-          cooldown: 40,
-          type: 'active'
-        },
-        {
-          name: 'Pack Hunter',
-          description: 'Damage increases by 8% for each enemy hero present, up to 32% with 4 enemy heroes.',
-          type: 'passive'
-        },
-        {
-          name: 'Evasive Maneuvers',
-          description: 'Has a 30% chance to dodge incoming attacks completely. This chance increases to 50% when below 40% HP.',
-          type: 'passive'
-        }
-      ],
-      description: 'A master of guerrilla warfare who strikes from unexpected angles and thrives in chaotic multi-hero battles.',
-      strengths: ['Extreme mobility', 'Excels in multi-hero fights', 'Unpredictable', 'Great for disruption'],
-      weaknesses: ['Requires skill to master', 'Risky playstyle', 'Less effective against single targets'],
-      bestWith: ['Fast cavalry units', 'Hit-and-run tactics', 'Flanking maneuvers'],
-      tacticalTips: [
-        'Viktor excels at disrupting enemy backlines - use him to target healers and ranged damage dealers',
-        'Save Guerrilla Assault for critical moments when you need to eliminate a priority target',
-        'Most effective in battles with multiple enemy heroes due to Pack Hunter',
-        'His high mobility makes him perfect for raid attacks and quick strikes',
-        'Use hit-and-run tactics to maximize his evasion passive'
-      ]
-    },
-    {
-      id: '5',
-      name: 'Captain Isabella Rodriguez',
-      rarity: 'epic',
-      role: 'damage',
-      stats: {
-        attack: 1180,
-        defense: 780,
-        hp: 5600,
-        speed: 85
-      },
-      abilities: [
-        {
-          name: 'Artillery Barrage',
-          description: 'Calls in an artillery strike on target area, dealing 220% attack damage to all enemies in a large radius. Burns the ground, dealing additional damage over 6 seconds.',
-          cooldown: 50,
-          type: 'active'
-        },
-        {
-          name: 'Tactical Bombardment',
-          description: 'All ranged attacks have a 25% chance to deal splash damage to nearby enemies for 50% of the damage dealt.',
-          type: 'passive'
-        },
-        {
-          name: 'Fire Support',
-          description: 'Increases attack range of all allied ranged units by 20%.',
-          type: 'passive'
-        }
-      ],
-      description: 'An artillery specialist who brings devastating area-of-effect damage to the battlefield, perfect for breaking enemy formations.',
-      strengths: ['Excellent AoE damage', 'Strong against grouped enemies', 'Good range', 'Synergizes with ranged units'],
-      weaknesses: ['Vulnerable to fast attackers', 'Long ability cooldown', 'Less effective against spread formations'],
-      bestWith: ['Ranged-heavy armies', 'Elena Frost (double ranged power)', 'Siege scenarios'],
-      tacticalTips: [
-        'Artillery Barrage is devastating against tightly grouped enemy formations',
-        'Use her increased range buff to kite melee-heavy enemy armies',
-        'Extremely effective in siege defense where enemies cluster at chokepoints',
-        'Pair with slow/freeze effects to keep enemies in the artillery strike zone',
-        'Position her safely behind your front line to maximize her damage output'
-      ]
-    },
-    {
-      id: '6',
-      name: 'Sergeant James "Bull" Turner',
-      rarity: 'rare',
-      role: 'tank',
-      stats: {
-        attack: 720,
-        defense: 1050,
-        hp: 7200,
-        speed: 60
-      },
-      abilities: [
-        {
-          name: 'Defensive Stance',
-          description: 'Increases defense by 50% and taunts nearby enemies to attack him for 8 seconds. During this time, damage taken is reduced by 30%.',
-          cooldown: 50,
-          type: 'active'
-        },
-        {
-          name: 'Stubborn Resilience',
-          description: 'Cannot be killed for 3 seconds after reaching 1 HP. This effect has a 90 second cooldown.',
-          type: 'passive'
-        },
-        {
-          name: 'Infantry Training',
-          description: 'Infantry units under his command gain +12% defense.',
-          type: 'passive'
-        }
-      ],
-      description: 'A tough-as-nails sergeant who refuses to go down and protects his troops with unwavering determination.',
-      strengths: ['Great survivability', 'Reliable tank option', 'Easy to obtain', 'Good for beginners'],
-      weaknesses: ['Limited utility', 'Low damage', 'Basic abilities compared to legendary tanks'],
-      bestWith: ['Infantry armies', 'New players', 'Budget-friendly compositions'],
-      tacticalTips: [
-        'Excellent starter tank hero that remains useful throughout early and mid-game',
-        'Use Defensive Stance when enemies focus fire on him to maximize damage absorption',
-        'His survivability passive can turn the tide of close battles',
-        'Cost-effective alternative to legendary tanks for F2P players',
-        'Pair with damage dealers who can capitalize on the time Bull buys them'
-      ]
-    },
-    {
-      id: '7',
-      name: 'Phantom',
-      rarity: 'legendary',
-      role: 'specialist',
-      stats: {
-        attack: 1350,
-        defense: 650,
-        hp: 4800,
-        speed: 125
-      },
-      abilities: [
-        {
-          name: 'Shadow Strike',
-          description: 'Becomes invisible for 6 seconds, then strikes dealing 400% attack damage. If this kills the target, cooldown is reduced by 50%.',
-          cooldown: 38,
-          type: 'active'
-        },
-        {
-          name: 'Assassin\'s Mark',
-          description: 'Marks the enemy hero with lowest HP. Deals 30% increased damage to marked targets.',
-          type: 'passive'
-        },
-        {
-          name: 'Shadow Veil',
-          description: 'Has a 40% chance to avoid all damage from the first attack after not being attacked for 5 seconds.',
-          type: 'passive'
-        }
-      ],
-      description: 'A mysterious assassin who specializes in eliminating weakened targets and operating in the shadows.',
-      strengths: ['Ultimate hero killer', 'Highest mobility', 'Stealth mechanics', 'Snowball potential with resets'],
-      weaknesses: ['Lowest HP in game', 'Requires perfect timing', 'Ineffective if focused'],
-      bestWith: ['AoE damage dealers who weaken multiple targets', 'Fast strike teams', 'Cleanup strategies'],
-      tacticalTips: [
-        'Phantom is designed for cleaning up damaged enemies - let allies damage targets first',
-        'The cooldown reset mechanic can create devastating chain kills in the right situation',
-        'Most effective when enemies are already engaged with your main army',
-        'Extremely high skill cap - not recommended for beginners',
-        'Use invisibility to reposition or escape, not just for damage'
-      ]
-    },
-    {
-      id: '8',
-      name: 'Major Liu Wei',
-      rarity: 'epic',
-      role: 'support',
-      stats: {
-        attack: 780,
-        defense: 920,
-        hp: 6400,
-        speed: 70
-      },
-      abilities: [
-        {
-          name: 'Tactical Orders',
-          description: 'All allied units gain +35% attack and +25% attack speed for 12 seconds.',
-          cooldown: 60,
-          type: 'active'
-        },
-        {
-          name: 'Battle Coordination',
-          description: 'Increases troop march speed by 15% and reduces training time by 10%.',
-          type: 'passive'
-        },
-        {
-          name: 'Strategic Mind',
-          description: 'Allied heroes gain +10% to all stats when fighting alongside Major Liu.',
-          type: 'passive'
-        }
-      ],
-      description: 'A brilliant strategist whose tactical acumen enhances all friendly forces on the battlefield.',
-      strengths: ['Powerful offensive buffs', 'Boosts all allies', 'March speed bonus', 'Versatile support'],
-      weaknesses: ['No healing', 'Requires allies to be effective', 'Moderate survivability'],
-      bestWith: ['Damage-focused heroes', 'Mixed army compositions', 'Aggressive strategies'],
-      tacticalTips: [
-        'Major Liu turns good armies into great ones with his massive buff potential',
-        'Use Tactical Orders at the start of engagements for maximum impact',
-        'His march speed bonus makes him valuable for both PvE and PvP scenarios',
-        'Pairs exceptionally well with Elena Frost to create devastating burst damage',
-        'Essential for speed-running events and timed challenges'
-      ]
+      "description": "Hero description",
+      "strengths": ["Strength 1", "Strength 2"],
+      "weaknesses": ["Weakness 1", "Weakness 2"],
+      "bestWith": ["Synergy 1", "Synergy 2"],
+      "tacticalTips": ["Tip 1", "Tip 2"]
     }
   ]
+}
+
+Include all heroes from the website. Be comprehensive and accurate.`
+
+        const response = await window.spark.llm(prompt, 'gpt-4o', true)
+        const parsed = JSON.parse(response)
+        
+        if (parsed.heroes && Array.isArray(parsed.heroes)) {
+          setHeroes(parsed.heroes)
+          toast.success('Heroes data loaded successfully!', {
+            icon: <CheckCircle className="text-green-500" weight="fill" />
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load heroes:', error)
+        toast.error('Failed to load heroes data. Please try refreshing the page.')
+      } finally {
+        setHeroesLoading(false)
+      }
+    }
+
+    loadHeroes()
+  }, [heroes, setHeroes])
 
   const rarityConfig = {
     common: { color: 'text-gray-500', bgColor: 'bg-gray-500/10', label: 'Common' },
@@ -661,7 +409,9 @@ function App() {
     return filtered
   }
 
-  const filterHeroes = (heroList: Hero[]) => {
+  const filterHeroes = (heroList: Hero[] | undefined) => {
+    if (!heroList) return []
+    
     let filtered = heroList
 
     if (searchQuery) {
@@ -934,7 +684,97 @@ function App() {
               </TabsContent>
 
               <TabsContent value="heroes" className="space-y-6">
-                {filteredHeroes.length === 0 ? (
+                {heroesLoading ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mb-4"></div>
+                      <p className="text-lg font-medium mb-2">Loading Heroes Data</p>
+                      <p className="text-muted-foreground text-center">Fetching hero information from Last War Tutorial...</p>
+                    </CardContent>
+                  </Card>
+                ) : filteredHeroes.length === 0 && (!heroes || heroes.length === 0) ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <UserCircle size={48} className="text-muted-foreground mb-4" />
+                      <p className="text-lg font-medium mb-2">No Heroes Data Available</p>
+                      <p className="text-muted-foreground text-center mb-4">Click the button below to load hero data from Last War Tutorial</p>
+                      <Button 
+                        onClick={async () => {
+                          setHeroesLoading(true)
+                          try {
+                            const websiteInfo = 'https://www.lastwartutorial.com/heroes/'
+                            const prompt = `You are analyzing the Last War game heroes from ${websiteInfo}.
+
+Based on the hero information from that website, generate a comprehensive list of ALL heroes in Last War with the following details for each:
+- Hero name
+- Rarity (common/rare/epic/legendary)
+- Role (tank/damage/support/specialist)
+- Base stats at max level (attack, defense, hp, speed as numbers)
+- All abilities with names, descriptions, cooldowns (for active abilities), and type (active/passive)
+- A description of the hero
+- List of strengths (3-4 items)
+- List of weaknesses (3-4 items)
+- Best synergies with other units/heroes (2-3 items)
+- Tactical tips for using the hero effectively (3-5 tips)
+
+Return the result as a valid JSON object with a single property called "heroes" that contains the complete hero list. Use this exact format:
+
+{
+  "heroes": [
+    {
+      "id": "1",
+      "name": "Hero Name",
+      "rarity": "legendary",
+      "role": "tank",
+      "stats": {
+        "attack": 850,
+        "defense": 1250,
+        "hp": 8500,
+        "speed": 65
+      },
+      "abilities": [
+        {
+          "name": "Ability Name",
+          "description": "Ability description",
+          "cooldown": 45,
+          "type": "active"
+        }
+      ],
+      "description": "Hero description",
+      "strengths": ["Strength 1", "Strength 2"],
+      "weaknesses": ["Weakness 1", "Weakness 2"],
+      "bestWith": ["Synergy 1", "Synergy 2"],
+      "tacticalTips": ["Tip 1", "Tip 2"]
+    }
+  ]
+}
+
+Include all heroes from the website. Be comprehensive and accurate.`
+
+                            const response = await window.spark.llm(prompt, 'gpt-4o', true)
+                            const parsed = JSON.parse(response)
+                            
+                            if (parsed.heroes && Array.isArray(parsed.heroes)) {
+                              setHeroes(parsed.heroes)
+                              toast.success('Heroes data loaded successfully!', {
+                                icon: <CheckCircle className="text-green-500" weight="fill" />
+                              })
+                            }
+                          } catch (error) {
+                            console.error('Failed to load heroes:', error)
+                            toast.error('Failed to load heroes data. Please try again.')
+                          } finally {
+                            setHeroesLoading(false)
+                          }
+                        }}
+                        className="gap-2"
+                      >
+                        <Lightning weight="fill" size={18} />
+                        Load Heroes Data
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : filteredHeroes.length === 0 ? (
                   <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                       <UserCircle size={48} className="text-muted-foreground mb-4" />
