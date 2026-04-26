@@ -4,7 +4,6 @@ import {
   BookOpen,
   CalendarDots,
   CaretRight,
-  Clock,
   Fire,
   Flag,
   Lightning,
@@ -68,15 +67,6 @@ const categoryIcons: Record<CategoryId, typeof CalendarDots> = {
   progression: TrendUp,
   systems: ShieldCheck,
 };
-
-function formatDate(value: string) {
-  if (!value) return "Mirror archive";
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
-}
 
 function guideTimestamp(guide: Guide) {
   return new Date(guide.updatedAt || guide.publishedAt || "1970-01-01").getTime();
@@ -144,6 +134,107 @@ function sectionTag(guide: Guide) {
   return "Systems";
 }
 
+function seasonWhatsNewSections(guide: Guide) {
+  const matchingSections = guide.sections.filter((section) =>
+    /new|building|resource|profession|feature|artifact|weather|beast|unit|mechanic/i.test(
+      `${section.title} ${section.body.join(" ")}`
+    )
+  );
+
+  return (matchingSections.length > 0 ? matchingSections : guide.sections).slice(0, 6);
+}
+
+function GuideDetailContent({ guide }: { guide: Guide }) {
+  return (
+    <div className="space-y-6">
+      {guide.coverImage ? (
+        <div className="relative h-72 overflow-hidden rounded-t-lg">
+          <img src={guide.coverImage} alt={guide.title} className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-2 p-5">
+            <Badge>{sectionTag(guide)}</Badge>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-6 p-5 pt-0">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <MapPinLine size={16} />
+              {guide.sourcePath}
+            </span>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold leading-tight sm:text-3xl">{guide.title}</h2>
+            <p className="text-base leading-7 text-muted-foreground">{guide.description}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          {guide.highlights.map((highlight) => (
+            <Card key={highlight} className="border-border/60 bg-background/70">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Flag weight="fill" className="mt-0.5 text-accent" size={18} />
+                  <p className="text-sm leading-6">{highlight}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Guide breakdown</h3>
+            <Badge variant="secondary">{guide.sections.length} sections</Badge>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            {guide.sections.map((section) => (
+              <AccordionItem key={section.id} value={section.id}>
+                <AccordionTrigger>{section.title}</AccordionTrigger>
+                <AccordionContent className="space-y-4">
+                  {section.image?.src ? (
+                    <img
+                      src={section.image.src}
+                      alt={section.image.alt}
+                      className="max-h-72 w-full rounded-xl border border-border/60 object-cover"
+                    />
+                  ) : null}
+                  {section.body.map((paragraph) => (
+                    <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
+                      {paragraph}
+                    </p>
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+
+        {guide.gallery.length > 0 ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Mirrored images</h3>
+              <Badge variant="secondary">{guide.gallery.length} assets</Badge>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {guide.gallery.slice(0, 6).map((image) => (
+                <figure key={`${image.src}-${image.alt}`} className="overflow-hidden rounded-xl border border-border/60">
+                  <img src={image.src} alt={image.alt} className="h-44 w-full object-cover" />
+                  <figcaption className="border-t border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                    {image.alt}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function GuideCard({
   guide,
   active,
@@ -172,12 +263,11 @@ function GuideCard({
           </div>
         )}
         <CardContent className="space-y-3 p-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Icon size={16} />
               {label ?? sectionTag(guide)}
             </div>
-            <span className="text-xs text-muted-foreground">{guide.readTimeMinutes} min</span>
           </div>
           <div className="space-y-2">
             <h3 className="text-lg font-semibold leading-snug">{guide.title}</h3>
@@ -197,6 +287,10 @@ function App() {
   const [selectedGuideId, setSelectedGuideId] = useState<string>("season-6-lost-rainforest");
   const [selectedHeroId, setSelectedHeroId] = useState<string>(mirrorContent.heroIntel.heroes[0]?.id ?? "");
   const [heroDialogOpen, setHeroDialogOpen] = useState(false);
+  const [seasonDialogGuideId, setSeasonDialogGuideId] = useState<string>("");
+  const [seasonDialogOpen, setSeasonDialogOpen] = useState(false);
+  const [guideDialogGuideId, setGuideDialogGuideId] = useState<string>("");
+  const [guideDialogOpen, setGuideDialogOpen] = useState(false);
 
   const seasonGroups = useMemo(() => {
     const groups = new Map<number, Guide[]>();
@@ -289,6 +383,45 @@ function App() {
 
   const activeSeasonGuides =
     seasonGroups.find((group) => group.seasonNumber === activeSeasonTab)?.guides ?? seasonGroups[0]?.guides ?? [];
+  const selectedSeasonGuide =
+    mirrorContent.guides.find((guide) => guide.id === seasonDialogGuideId) ?? primarySeasonGuides[0] ?? null;
+  const selectedSeasonNumber = selectedSeasonGuide ? extractSeasonNumber(selectedSeasonGuide) : null;
+  const relatedSeasonGuides =
+    selectedSeasonNumber === null
+      ? []
+      : seasonGroups.find((group) => group.seasonNumber === selectedSeasonNumber)?.guides ?? [];
+  const relatedWeeklyGuides = relatedSeasonGuides.filter((guide) => guide.id !== selectedSeasonGuide?.id);
+  const selectedModalGuide =
+    mirrorContent.guides.find((guide) => guide.id === guideDialogGuideId) ?? selectedGuide ?? mirrorContent.guides[0];
+
+  function openSeasonGuide(guideId: string) {
+    setSelectedGuideId(guideId);
+    setSeasonDialogGuideId(guideId);
+    setSeasonDialogOpen(true);
+  }
+
+  function openGuideDialog(guideId: string) {
+    setSelectedGuideId(guideId);
+    setGuideDialogGuideId(guideId);
+    setGuideDialogOpen(true);
+  }
+
+  function openGuideExperience(guideId: string) {
+    const guide = mirrorContent.guides.find((entry) => entry.id === guideId);
+    if (!guide) return;
+
+    if (isSeasonGuide(guide)) {
+      openSeasonGuide(guideId);
+      return;
+    }
+
+    if (isHeroGuide(guide) || isEventGuide(guide) || isGameplayTipGuide(guide) || isProgressionGuide(guide)) {
+      openGuideDialog(guideId);
+      return;
+    }
+
+    setSelectedGuideId(guideId);
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -547,7 +680,7 @@ function App() {
                     guide={guide}
                     active={guide.id === selectedGuide?.id}
                     label={`Season ${extractSeasonNumber(guide) ?? "?"}`}
-                    onSelect={setSelectedGuideId}
+                    onSelect={openSeasonGuide}
                   />
                 ))}
               </div>
@@ -564,7 +697,7 @@ function App() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {primarySeasonGuides.map((guide) => (
-              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={openSeasonGuide} />
             ))}
           </div>
         </section>
@@ -675,7 +808,7 @@ function App() {
 
           <Dialog open={heroDialogOpen && Boolean(selectedHero)} onOpenChange={setHeroDialogOpen}>
             {selectedHero ? (
-              <DialogContent className="max-h-[min(92vh,980px)] max-w-5xl overflow-hidden p-0">
+              <DialogContent className="max-h-[min(92vh,980px)] w-[95vw] max-w-[95vw] md:w-[75vw] md:max-w-[75vw] overflow-hidden p-0">
                 <ScrollArea className="max-h-[min(92vh,980px)]">
                   <div className="p-6 sm:p-8">
                     <DialogHeader className="space-y-2">
@@ -733,6 +866,70 @@ function App() {
                             )}
                           </div>
                         </div>
+
+                        {selectedHero.ultimateWeapons.length > 0 ? (
+                          <div className="space-y-3 rounded-xl border border-border/60 bg-background/70 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                Ultimate weapons
+                              </h4>
+                              <Badge variant="secondary">{selectedHero.ultimateWeapons.length}</Badge>
+                            </div>
+                            <div className="space-y-4">
+                              {selectedHero.ultimateWeapons.map((weapon) => (
+                                <div key={weapon.id} className="space-y-3 rounded-lg border border-border/50 p-3">
+                                  <div className="space-y-2">
+                                    <p className="font-medium">{weapon.title}</p>
+                                    {weapon.image?.src ? (
+                                      <img
+                                        src={weapon.image.src}
+                                        alt={weapon.image.alt}
+                                        className="max-h-64 w-full rounded-lg border border-border/50 object-cover"
+                                      />
+                                    ) : null}
+                                  </div>
+                                  {weapon.body.map((paragraph) => (
+                                    <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
+                                      {paragraph}
+                                    </p>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {selectedHero.upgrades.length > 0 ? (
+                          <div className="space-y-3 rounded-xl border border-border/60 bg-background/70 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                                Hero upgrades
+                              </h4>
+                              <Badge variant="secondary">{selectedHero.upgrades.length}</Badge>
+                            </div>
+                            <div className="space-y-4">
+                              {selectedHero.upgrades.map((upgrade) => (
+                                <div key={upgrade.id} className="space-y-3 rounded-lg border border-border/50 p-3">
+                                  <div className="space-y-2">
+                                    <p className="font-medium">{upgrade.title}</p>
+                                    {upgrade.image?.src ? (
+                                      <img
+                                        src={upgrade.image.src}
+                                        alt={upgrade.image.alt}
+                                        className="max-h-64 w-full rounded-lg border border-border/50 object-cover"
+                                      />
+                                    ) : null}
+                                  </div>
+                                  {upgrade.body.map((paragraph) => (
+                                    <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
+                                      {paragraph}
+                                    </p>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="space-y-4">
@@ -780,6 +977,112 @@ function App() {
             ) : null}
           </Dialog>
 
+          <Dialog open={seasonDialogOpen && Boolean(selectedSeasonGuide)} onOpenChange={setSeasonDialogOpen}>
+            {selectedSeasonGuide ? (
+              <DialogContent className="max-h-[min(92vh,980px)] w-[95vw] max-w-[95vw] md:w-[75vw] md:max-w-[75vw] overflow-hidden p-0">
+                <ScrollArea className="max-h-[min(92vh,980px)]">
+                  <div className="space-y-6 p-6 sm:p-8">
+                    <DialogHeader className="space-y-2">
+                      <DialogTitle className="text-2xl">{selectedSeasonGuide.title}</DialogTitle>
+                      <DialogDescription>{selectedSeasonGuide.description}</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-6 lg:grid-cols-[0.42fr_0.58fr]">
+                      <div className="space-y-4">
+                        {selectedSeasonGuide.coverImage ? (
+                          <img
+                            src={selectedSeasonGuide.coverImage}
+                            alt={selectedSeasonGuide.title}
+                            className="max-h-96 w-full rounded-xl border border-border/60 object-cover"
+                          />
+                        ) : null}
+                        <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPinLine size={16} />
+                              {selectedSeasonGuide.sourcePath}
+                            </span>
+                          </div>
+                          <div className="mt-4 grid gap-3">
+                            {selectedSeasonGuide.highlights.map((highlight) => (
+                              <div key={highlight} className="flex items-start gap-3 rounded-lg border border-border/50 p-3">
+                                <Flag weight="fill" className="mt-0.5 text-accent" size={18} />
+                                <p className="text-sm leading-6">{highlight}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-5">
+                        <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold">What&apos;s new</h3>
+                            <Badge variant="secondary">{seasonWhatsNewSections(selectedSeasonGuide).length}</Badge>
+                          </div>
+                          <div className="mt-4 space-y-4">
+                            {seasonWhatsNewSections(selectedSeasonGuide).map((section) => (
+                              <div key={section.id} className="space-y-3 rounded-lg border border-border/50 p-3">
+                                <p className="font-medium">{section.title}</p>
+                                {section.image?.src ? (
+                                  <img
+                                    src={section.image.src}
+                                    alt={section.image.alt}
+                                    className="max-h-56 w-full rounded-lg border border-border/50 object-cover"
+                                  />
+                                ) : null}
+                                {section.body.map((paragraph) => (
+                                  <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
+                                    {paragraph}
+                                  </p>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-border/60 bg-background/70 p-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-semibold">Per week</h3>
+                            <Badge variant="secondary">{relatedWeeklyGuides.length}</Badge>
+                          </div>
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {relatedWeeklyGuides.map((guide) => (
+                              <button
+                                key={guide.id}
+                                type="button"
+                                onClick={() => setSelectedGuideId(guide.id)}
+                                className="overflow-hidden rounded-xl border border-border/60 text-left transition hover:border-accent/60 hover:bg-accent/5"
+                              >
+                                {guide.coverImage ? (
+                                  <img src={guide.coverImage} alt={guide.title} className="h-32 w-full object-cover" />
+                                ) : null}
+                                <div className="space-y-2 p-3">
+                                  <p className="font-medium">{guide.title}</p>
+                                  <p className="line-clamp-3 text-sm text-muted-foreground">{guide.description}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            ) : null}
+          </Dialog>
+
+          <Dialog open={guideDialogOpen && Boolean(selectedModalGuide)} onOpenChange={setGuideDialogOpen}>
+            {selectedModalGuide ? (
+              <DialogContent className="max-h-[min(92vh,980px)] w-[95vw] max-w-[95vw] md:w-[75vw] md:max-w-[75vw] overflow-hidden p-0">
+                <ScrollArea className="max-h-[min(92vh,980px)]">
+                  <GuideDetailContent guide={selectedModalGuide} />
+                </ScrollArea>
+              </DialogContent>
+            ) : null}
+          </Dialog>
+
           <div className="grid gap-4 md:grid-cols-2">
             {heroGuides.map((guide) => (
               <GuideCard
@@ -787,7 +1090,7 @@ function App() {
                 guide={guide}
                 active={guide.id === selectedGuide?.id}
                 label="Hero guide"
-                onSelect={setSelectedGuideId}
+                onSelect={openGuideDialog}
               />
             ))}
           </div>
@@ -802,7 +1105,7 @@ function App() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {eventGuides.map((guide) => (
-              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={openGuideDialog} />
             ))}
           </div>
         </section>
@@ -816,7 +1119,7 @@ function App() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {gameplayTipGuides.map((guide) => (
-              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={openGuideDialog} />
             ))}
           </div>
         </section>
@@ -830,7 +1133,7 @@ function App() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {progressionGuides.map((guide) => (
-              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={openGuideDialog} />
             ))}
           </div>
         </section>
@@ -874,7 +1177,6 @@ function App() {
                         <p className="font-medium">{guide.title}</p>
                         <p className="text-sm text-muted-foreground">{sectionTag(guide)}</p>
                       </div>
-                      <Badge variant="secondary">{guide.readTimeMinutes} min</Badge>
                     </div>
                   </button>
                 ))}
@@ -885,97 +1187,7 @@ function App() {
           {selectedGuide ? (
             <Card className="overflow-hidden border-border/70">
               <ScrollArea className="max-h-[82vh]">
-                <div className="space-y-6">
-                  {selectedGuide.coverImage ? (
-                    <div className="relative h-72 overflow-hidden">
-                      <img src={selectedGuide.coverImage} alt={selectedGuide.title} className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-2 p-5">
-                        <Badge>{sectionTag(selectedGuide)}</Badge>
-                        <Badge variant="secondary">{selectedGuide.readTimeMinutes} min read</Badge>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="space-y-6 p-5 pt-0">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <Clock size={16} />
-                          Updated {formatDate(selectedGuide.updatedAt || selectedGuide.publishedAt)}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <MapPinLine size={16} />
-                          {selectedGuide.sourcePath}
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        <h2 className="text-2xl font-semibold leading-tight sm:text-3xl">{selectedGuide.title}</h2>
-                        <p className="text-base leading-7 text-muted-foreground">{selectedGuide.description}</p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {selectedGuide.highlights.map((highlight) => (
-                        <Card key={highlight} className="border-border/60 bg-background/70">
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <Flag weight="fill" className="mt-0.5 text-accent" size={18} />
-                              <p className="text-sm leading-6">{highlight}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Guide breakdown</h3>
-                        <Badge variant="secondary">{selectedGuide.sections.length} sections</Badge>
-                      </div>
-                      <Accordion type="single" collapsible className="w-full">
-                        {selectedGuide.sections.map((section) => (
-                          <AccordionItem key={section.id} value={section.id}>
-                            <AccordionTrigger>{section.title}</AccordionTrigger>
-                            <AccordionContent className="space-y-4">
-                              {section.image?.src ? (
-                                <img
-                                  src={section.image.src}
-                                  alt={section.image.alt}
-                                  className="max-h-72 w-full rounded-xl border border-border/60 object-cover"
-                                />
-                              ) : null}
-                              {section.body.map((paragraph) => (
-                                <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
-                                  {paragraph}
-                                </p>
-                              ))}
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    </div>
-
-                    {selectedGuide.gallery.length > 0 ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold">Mirrored images</h3>
-                          <Badge variant="secondary">{selectedGuide.gallery.length} assets</Badge>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {selectedGuide.gallery.slice(0, 6).map((image) => (
-                            <figure key={`${image.src}-${image.alt}`} className="overflow-hidden rounded-xl border border-border/60">
-                              <img src={image.src} alt={image.alt} className="h-44 w-full object-cover" />
-                              <figcaption className="border-t border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                                {image.alt}
-                              </figcaption>
-                            </figure>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
+                <GuideDetailContent guide={selectedGuide} />
               </ScrollArea>
             </Card>
           ) : null}
@@ -1006,7 +1218,7 @@ function App() {
                     <AccordionContent className="space-y-3">
                       <p className="text-sm leading-7 text-muted-foreground">{faq.answer}</p>
                       {faq.guideId ? (
-                        <Button variant="outline" size="sm" onClick={() => setSelectedGuideId(faq.guideId)}>
+                        <Button variant="outline" size="sm" onClick={() => openGuideExperience(faq.guideId)}>
                           <CaretRight size={16} />
                           Open related guide
                         </Button>

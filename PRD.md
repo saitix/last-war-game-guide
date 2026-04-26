@@ -52,10 +52,7 @@ The app should present content in clear sections such as:
 
 ### Main menu entries
 
-- All Intel ( organized in tabs for each season)
-- Season : the seasons (all of them since inception)
-    1. Season mechanics
-    2. Season tabs : like Season 1, Season 2 ... etc
+- Seasons : the seasons (all of them since inception)
 - Heroes : All heroes depicted with details
 - Events : All events from the mirror sorted by timeline (most recent come first)- Events
 - Gameplay tips
@@ -76,7 +73,29 @@ Success target: important topics should be easy to reach with minimal navigation
 - Hero images are a must. The 2nd source saves the hero associated images in mirror/fandom/heroes/images (2nd source has #1 priority). Images for heroes and their ultimate weapons are linked in mirror/www.lastwartutorial.com/heroes/index.html (images from there have #2 priority - only if not found in 2nd source)
 - Try to extract Hero upgrade and ultimate weapon information from the 1st source
 - Clicking on a hero should open all the hero details in a modal dialog, and not on the bottom of the hero gallery. It has to be in the most easy to digest way
+- Create the **Hero guide** as a modal with the details inside
 
+### Seasons
+
+  1. Season mechanics
+  2. Season tabs : like Season 1, Season 2 ... etc
+  3. When clicking a season, a modal opens with : 
+     - season title
+     - season details
+     - what's new (buildings, ressources, etc... )
+     - per week (week1, week2, etc... ) - manual, pictures
+
+### Events
+
+- Each **Event** card (with info) should open a modal containing the rest of the details
+
+### Gameplay tips
+
+- Each **Gameplay tips** card (with info) should open a modal containing the rest of the details
+
+### Progression
+
+- Each **Progression** card (with info) should open a modal containing the rest of the details
 
 ### Search
 
@@ -84,7 +103,8 @@ Search should help users find specific topics, heroes, events, and advice quickl
 
 ### FAQ
 
-The app should include a dedicated FAQ section with concise, expandable answers to common player questions.
+- The app should include a dedicated FAQ section with concise, expandable answers to common player questions.
+- If the faq contains guide details like the "open related guide" and that guide does have a modal, launch that modal
 
 ### Dark mode
 
@@ -117,8 +137,12 @@ The visual direction should feel tactical and polished, matching the Last War th
 - Keep navigation simple for players of all skill levels
 - Preserve mobile usability when introducing new sections or interactions
 - Treat the local mirror and this PRD as the default reference for future development work
+- Modal dialogs / Modal info should be wide by default (since they contain a lot of data), wide as in 75% viewport width
 
 ## Exclusions from the mirror
 
 - Exclude the Community stuff
 - Exclude 'Contact Us'
+- Exclude Legal
+- Exclude x min (information taken from various sources, we don't need to know how long ago the info was updated, or how long it takes to read)
+  

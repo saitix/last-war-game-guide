@@ -232,6 +232,17 @@ function parseTextBlocks(html) {
   return [...parseParagraphs(html), ...parseListItems(html)];
 }
 
+function parseSliceImages(sliceHtml, pageRelativePath, fallbackAlt) {
+  return [...sliceHtml.matchAll(/<img\b[^>]*>/gi)]
+    .map((match) => {
+      const tag = match[0];
+      const src = getAttr(tag, "src");
+      const alt = getAttr(tag, "alt");
+      return resolveImage(pageRelativePath, src, alt || fallbackAlt);
+    })
+    .filter(Boolean);
+}
+
 function titleCase(input) {
   return normaliseWhitespace(input)
     .split(" ")
@@ -284,6 +295,28 @@ function parseHeroSkills(blockHtml) {
         bonuses: [],
       };
     });
+}
+
+function parseHeroFeatureSections(blockHtml, pageRelativePath) {
+  const headingMatches = [...blockHtml.matchAll(/<h4\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/h4>/gi)];
+
+  return headingMatches.map((match, index) => {
+    const next = headingMatches[index + 1];
+    const start = match.index ?? 0;
+    const end = next ? next.index ?? blockHtml.length : blockHtml.length;
+    const sliceHtml = blockHtml.slice(start, end);
+    const title = normaliseWhitespace(match[2]);
+    const images = parseSliceImages(sliceHtml, pageRelativePath, title).filter(
+      (image) => !/skill|virus-molecule/i.test(image.src)
+    );
+
+    return {
+      id: slugify(title),
+      title,
+      body: parseParagraphs(sliceHtml).slice(0, 4),
+      image: images[0] ?? null,
+    };
+  });
 }
 
 function parseFandomDataValue(html, sourceName) {
@@ -465,6 +498,9 @@ function parseHeroIntel() {
       });
 
     const image = imageTag ? resolveImage(heroesRelativePath, getAttr(imageTag, "src"), namePart?.trim() || headingText) : null;
+    const featureSections = parseHeroFeatureSections(blockHtml, heroesRelativePath);
+    const upgrades = featureSections.filter((section) => /upgrade/i.test(section.title));
+    const ultimateWeapons = featureSections.filter((section) => /weapon/i.test(section.title));
 
     return {
       id,
@@ -478,6 +514,8 @@ function parseHeroIntel() {
       gear,
       image: fandomHero?.image || image || null,
       skills: fandomHero?.skills?.length ? fandomHero.skills : parseHeroSkills(blockHtml),
+      upgrades,
+      ultimateWeapons,
       sourcePaths: [heroesRelativePath, ...(fandomHero ? [fandomHero.sourcePath] : [])],
     };
   });
@@ -500,6 +538,8 @@ function parseHeroIntel() {
       },
       image: hero.image,
       skills: hero.skills,
+      upgrades: [],
+      ultimateWeapons: [],
       sourcePaths: [hero.sourcePath],
     }));
 
@@ -798,6 +838,14 @@ export const mirrorContent = {
         skills: hero.skills.map((skill) => ({
           ...skill,
           image: markImageForCode(skill.image),
+        })),
+        upgrades: hero.upgrades.map((entry) => ({
+          ...entry,
+          image: markImageForCode(entry.image),
+        })),
+        ultimateWeapons: hero.ultimateWeapons.map((entry) => ({
+          ...entry,
+          image: markImageForCode(entry.image),
         })),
       })),
     },
