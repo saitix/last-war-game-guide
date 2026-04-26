@@ -32,6 +32,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -195,6 +196,7 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedGuideId, setSelectedGuideId] = useState<string>("season-6-lost-rainforest");
   const [selectedHeroId, setSelectedHeroId] = useState<string>(mirrorContent.heroIntel.heroes[0]?.id ?? "");
+  const [heroDialogOpen, setHeroDialogOpen] = useState(false);
 
   const seasonGroups = useMemo(() => {
     const groups = new Map<number, Guide[]>();
@@ -571,7 +573,7 @@ function App() {
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold sm:text-3xl">Heroes</h2>
             <p className="text-muted-foreground">
-              Mirror-backed hero roster with rarity, type, ability, skills, gear guidance, and hero imagery.
+              Mirror-backed hero roster with alias, troop type, ability, skills, gear guidance, and hero imagery.
             </p>
           </div>
 
@@ -642,7 +644,10 @@ function App() {
                     <button
                       key={hero.id}
                       type="button"
-                      onClick={() => setSelectedHeroId(hero.id)}
+                      onClick={() => {
+                        setSelectedHeroId(hero.id);
+                        setHeroDialogOpen(true);
+                      }}
                       className={`overflow-hidden rounded-xl border text-left transition hover:border-accent/60 hover:bg-accent/5 ${
                         hero.id === selectedHero?.id ? "border-accent bg-accent/10" : "border-border/60"
                       }`}
@@ -653,7 +658,7 @@ function App() {
                       <div className="space-y-3 p-4">
                         <div>
                           <p className="font-semibold">{hero.name}</p>
-                          <p className="text-sm text-muted-foreground">{hero.title}</p>
+                          <p className="text-sm text-muted-foreground">{hero.alias || hero.title}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary">{hero.rarity}</Badge>
@@ -664,71 +669,116 @@ function App() {
                     </button>
                   ))}
                 </div>
-
-                {selectedHero ? (
-                  <div className="grid gap-5 rounded-2xl border border-border/60 bg-muted/20 p-4 md:grid-cols-[0.44fr_0.56fr]">
-                    <div className="space-y-4">
-                      {selectedHero.image?.src ? (
-                        <img
-                          src={selectedHero.image.src}
-                          alt={selectedHero.name}
-                          className="max-h-96 w-full rounded-xl border border-border/60 object-cover"
-                        />
-                      ) : null}
-                      <div className="space-y-2">
-                        <h3 className="text-2xl font-semibold">{selectedHero.name}</h3>
-                        <p className="text-muted-foreground">{selectedHero.title}</p>
-                        <p className="text-sm leading-7 text-muted-foreground">{selectedHero.description}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge>{selectedHero.rarity}</Badge>
-                        <Badge variant="secondary">{selectedHero.type}</Badge>
-                        <Badge variant="secondary">{selectedHero.ability}</Badge>
-                      </div>
-
-                      <div className="space-y-3 rounded-xl border border-border/60 bg-background/70 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gear</h4>
-                          {selectedHero.gear.recommended.length > 0 ? (
-                            <Badge variant="secondary">{selectedHero.gear.recommended.length} picks</Badge>
-                          ) : null}
-                        </div>
-                        <p className="text-sm leading-7 text-muted-foreground">{selectedHero.gear.summary}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedHero.gear.recommended.length > 0 ? (
-                            selectedHero.gear.recommended.map((item) => (
-                              <Badge key={item} variant="outline">
-                                {item}
-                              </Badge>
-                            ))
-                          ) : (
-                            <Badge variant="outline">See general gears guide</Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-semibold">Skills</h4>
-                        <Badge variant="secondary">{selectedHero.skills.length}</Badge>
-                      </div>
-                      <Accordion type="single" collapsible className="w-full">
-                        {selectedHero.skills.map((skill) => (
-                          <AccordionItem key={skill.name} value={skill.name}>
-                            <AccordionTrigger>{skill.name}</AccordionTrigger>
-                            <AccordionContent>
-                              <p className="text-sm leading-7 text-muted-foreground">{skill.description}</p>
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    </div>
-                  </div>
-                ) : null}
               </CardContent>
             </Card>
           </div>
+
+          <Dialog open={heroDialogOpen && Boolean(selectedHero)} onOpenChange={setHeroDialogOpen}>
+            {selectedHero ? (
+              <DialogContent className="max-h-[min(92vh,980px)] max-w-5xl overflow-hidden p-0">
+                <ScrollArea className="max-h-[min(92vh,980px)]">
+                  <div className="p-6 sm:p-8">
+                    <DialogHeader className="space-y-2">
+                      <DialogTitle className="text-2xl">{selectedHero.name}</DialogTitle>
+                      <DialogDescription>{selectedHero.alias || selectedHero.title}</DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-6 grid gap-5 md:grid-cols-[0.42fr_0.58fr]">
+                      <div className="space-y-4">
+                        {selectedHero.image?.src ? (
+                          <img
+                            src={selectedHero.image.src}
+                            alt={selectedHero.name}
+                            className="max-h-96 w-full rounded-xl border border-border/60 object-cover"
+                          />
+                        ) : null}
+                        <p className="text-sm leading-7 text-muted-foreground">{selectedHero.description}</p>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alias</p>
+                            <p className="mt-1 text-sm">{selectedHero.alias || selectedHero.title || "Unknown"}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hero troop type</p>
+                            <p className="mt-1 text-sm">{selectedHero.type || "Unknown"}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ability</p>
+                            <p className="mt-1 text-sm">{selectedHero.ability || "Unknown"}</p>
+                          </div>
+                          <div className="rounded-xl border border-border/60 bg-background/70 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rarity</p>
+                            <p className="mt-1 text-sm">{selectedHero.rarity || "Unknown"}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 rounded-xl border border-border/60 bg-background/70 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gear</h4>
+                            {selectedHero.gear.recommended.length > 0 ? (
+                              <Badge variant="secondary">{selectedHero.gear.recommended.length} picks</Badge>
+                            ) : null}
+                          </div>
+                          <p className="text-sm leading-7 text-muted-foreground">{selectedHero.gear.summary}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedHero.gear.recommended.length > 0 ? (
+                              selectedHero.gear.recommended.map((item) => (
+                                <Badge key={item} variant="outline">
+                                  {item}
+                                </Badge>
+                              ))
+                            ) : (
+                              <Badge variant="outline">See general gears guide</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-lg font-semibold">Skills</h4>
+                          <Badge variant="secondary">{selectedHero.skills.length}</Badge>
+                        </div>
+                        <Accordion type="single" collapsible className="w-full">
+                          {selectedHero.skills.map((skill) => (
+                            <AccordionItem key={skill.title || skill.name} value={skill.title || skill.name}>
+                              <AccordionTrigger>{skill.title || skill.name}</AccordionTrigger>
+                              <AccordionContent>
+                                <div className="space-y-3">
+                                  {skill.slot ? (
+                                    <Badge variant="outline" className="w-fit">
+                                      {skill.slot}
+                                    </Badge>
+                                  ) : null}
+                                  <p className="text-sm leading-7 text-muted-foreground">{skill.description}</p>
+                                  {skill.bonuses?.length ? (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Bonus stats
+                                      </p>
+                                      <ul className="space-y-2 text-sm text-muted-foreground">
+                                        {skill.bonuses.map((bonus) => (
+                                          <li key={bonus} className="flex gap-2">
+                                            <span className="mt-2 size-1.5 rounded-full bg-accent" />
+                                            <span>{bonus}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            ) : null}
+          </Dialog>
 
           <div className="grid gap-4 md:grid-cols-2">
             {heroGuides.map((guide) => (

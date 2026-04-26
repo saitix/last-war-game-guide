@@ -67,10 +67,16 @@ Success target: important topics should be easy to reach with minimal navigation
 
 ### Heroes
 
-- Include all heroes included in the mirror
+- Heroes 1st source: mirror/www.lastwartutorial.com/heroes/index.html
+- Heroes 2nd source: mirror/fandom/heroes
+- Include all heroes included in the mirrors
 - Explain the heroes types section
-- Each hero should have the following specs: ability, type, rarity, skills, gear
-- Hero images are a must
+- Each hero should have the following specs: alias, ability, type (hero troop type), rarity, skills, gear
+- Each hero should contain the skills table like: Auto, Passive, tactics, Expertise, Ultimate weapon (with image), hero upgrades (if any)
+- Hero images are a must. The 2nd source saves the hero associated images in mirror/fandom/heroes/images (2nd source has #1 priority). Images for heroes and their ultimate weapons are linked in mirror/www.lastwartutorial.com/heroes/index.html (images from there have #2 priority - only if not found in 2nd source)
+- Try to extract Hero upgrade and ultimate weapon information from the 1st source
+- Clicking on a hero should open all the hero details in a modal dialog, and not on the bottom of the hero gallery. It has to be in the most easy to digest way
+
 
 ### Search
 

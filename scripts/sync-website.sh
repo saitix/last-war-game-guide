@@ -5,6 +5,12 @@ set -euo pipefail
 DEFAULT_URL="https://www.lastwartutorial.com/"
 URL="${1:-$DEFAULT_URL}"
 
+# Hard cap on how long a single sync may run, in seconds. Override by exporting
+# MAX_SYNC_SECONDS before invoking the script. Defaults to 30 minutes — well
+# above a normal incremental update but short enough that a stuck httrack
+# session can't sit there for hours.
+MAX_SYNC_SECONDS="${MAX_SYNC_SECONDS:-1800}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)/mirror"
 LOG_FILE="${LOG_FILE:-$PROJECT_DIR/httrack-sync.log}"
@@ -78,13 +84,71 @@ fi
 
 cd "$PROJECT_DIR"
 
-if [ -d "hts-cache" ]; then
-    httrack "$CANONICAL_URL" -O "$PROJECT_DIR" --update -I0 >> "$LOG_FILE" 2>&1
-else
-    httrack "$CANONICAL_URL" -O "$PROJECT_DIR" -I0 >> "$LOG_FILE" 2>&1
-fi
+# httrack flag notes:
+#   -I0                      do not generate the global index.html
+#   --stay-on-same-address   restrict crawling to the same hostname
+#   --advanced-progressinfo  more verbose progress info in the log
+#   -E<seconds>              httrack-internal max session time (soft limit)
+#
+# We additionally wrap the call in `timeout` as a hard kill switch, since
+# httrack has been observed to hang well past its own --max-time on slow
+# servers.
+HTTRACK_COMMON=(
+    -O "$PROJECT_DIR"
+    -I0
+    --stay-on-same-address
+    --advanced-progressinfo
+    "-E${MAX_SYNC_SECONDS}"
+)
 
-printf '%s\n' "$CANONICAL_URL" > "$SOURCE_URL_FILE"
+# URL exclusion filters. httrack scan rules use `-pattern` to skip and `*`
+# as a wildcard. These bogus paths consistently produce 403/404s on
+# WordPress sites (see mirror/hts-log.txt) and were the source of the
+# previous runaway crawl:
+#   /xmlrpc.php           WordPress XML-RPC endpoint, always 403/forbidden
+#   */Edg/                garbage path injected from "Edg" UA token parsing
+#   */+/                  garbage path from a Google "+" handler
+#   */GET                 garbage path from a malformed link
+#   *?p=NNNN              WordPress short-link IDs that 301-redirect to the
+#                         canonical slug — fetching them just duplicates work
+#   *?replytocom=*        WordPress comment-reply links — combinatorial trap
+#   */wp-json/*           REST API endpoints, not browseable HTML
+#   */wp-login.php*       login forms / endless redirect to wp-admin
+#   */wp-admin/*          admin area, requires auth, also 403s
+#   */feed/*              RSS feeds duplicate every page
+#   */trackback/*         pingback endpoints
+#   */comments/feed/*     per-post comment feeds
+HTTRACK_FILTERS=(
+    '-*/xmlrpc.php*'
+    '-*/Edg/*'
+    '-*/+/*'
+    '-*/GET'
+    '-*?p=*'
+    '-*?replytocom=*'
+    '-*/wp-json/*'
+    '-*/wp-login.php*'
+    '-*/wp-admin/*'
+    '-*/feed/*'
+    '-*/trackback/*'
+    '-*/comments/feed/*'
+)
+
+run_httrack() {
+    # `timeout --kill-after=30s ...` sends SIGTERM after MAX_SYNC_SECONDS, then
+    # SIGKILL 30s later if httrack hasn't exited. Output is appended to the log.
+    timeout --kill-after=30s "${MAX_SYNC_SECONDS}s" httrack "$@" >> "$LOG_FILE" 2>&1
+    local rc=$?
+    if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Sync aborted: httrack exceeded ${MAX_SYNC_SECONDS}s and was killed (exit $rc)." >> "$LOG_FILE"
+    fi
+    return "$rc"
+}
+
+if [ -d "hts-cache" ]; then
+    run_httrack "$CANONICAL_URL" "${HTTRACK_COMMON[@]}" --update --repair-cache "${HTTRACK_FILTERS[@]}"
+else
+    run_httrack "$CANONICAL_URL" "${HTTRACK_COMMON[@]}" "${HTTRACK_FILTERS[@]}"
+fi
 
 if [ ! -f "$PROJECT_DIR/$CANONICAL_HOST/index.html" ]; then
     echo "$(date '+%Y-%m-%d %H:%M:%S') - Synchronization failed: expected $PROJECT_DIR/$CANONICAL_HOST/index.html to exist." >> "$LOG_FILE"

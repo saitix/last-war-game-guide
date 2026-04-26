@@ -5,6 +5,7 @@ import path from "node:path";
 
 const projectRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const mirrorRoot = path.join(projectRoot, "mirror", "www.lastwartutorial.com");
+const fandomRoot = path.join(projectRoot, "mirror", "fandom");
 const outputFile = path.join(projectRoot, "src", "data", "mirror-content.generated.ts");
 
 const excludedSegments = new Set(["feed", "comments", "wp-json", "Edg", "+"]);
@@ -182,6 +183,14 @@ function assetExpression(assetRelativePath) {
   return `new URL(${JSON.stringify(`../../mirror/www.lastwartutorial.com/${assetRelativePath}`)}, import.meta.url).href`;
 }
 
+function fandomAssetExpression(assetRelativePath) {
+  return `new URL(${JSON.stringify(`../../mirror/fandom/${assetRelativePath}`)}, import.meta.url).href`;
+}
+
+function imageExpression(source) {
+  return /^https?:\/\//i.test(source) ? JSON.stringify(source) : assetExpression(source);
+}
+
 function escapeRegex(input) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -223,6 +232,37 @@ function parseTextBlocks(html) {
   return [...parseParagraphs(html), ...parseListItems(html)];
 }
 
+function titleCase(input) {
+  return normaliseWhitespace(input)
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function normaliseHeroAbility(input) {
+  const value = normaliseWhitespace(input).toLowerCase();
+  if (!value) return "";
+  if (value === "damage" || value === "attack" || value === "attacker") return "attacker";
+  if (value === "defense" || value === "defender") return "defender";
+  if (value === "support") return "support";
+  return value;
+}
+
+function normaliseSkillSlot(input) {
+  const value = normaliseWhitespace(input).toLowerCase();
+  if (!value) return "";
+  if (value === "auto" || value === "auto attack") return "Auto Attack";
+  if (value === "tactics") return "Tactics";
+  if (value === "passive") return "Passive";
+  if (value === "expertise") return "Expertise";
+  return "";
+}
+
+function getImageSource(tag) {
+  return getAttr(tag, "data-src") || getAttr(tag, "src");
+}
+
 function parseHeroSkills(blockHtml) {
   const tableMatch = blockHtml.match(/<table>[\s\S]*?<tbody>([\s\S]*?)<\/tbody><\/table>/i);
   if (!tableMatch) return [];
@@ -231,10 +271,125 @@ function parseHeroSkills(blockHtml) {
     .slice(1)
     .map((rowMatch) => [...rowMatch[1].matchAll(/<td>([\s\S]*?)<\/td>/gi)].map((cell) => normaliseWhitespace(cell[1])))
     .filter((cells) => cells.length >= 3)
-    .map((cells) => ({
-      name: cells[0],
-      description: cells[2],
-    }));
+    .map((cells) => {
+      const [slotPart, ...nameParts] = cells[0].split(":");
+      const slot = normaliseSkillSlot(slotPart);
+      const name = nameParts.length > 0 ? nameParts.join(":").trim() : cells[0];
+
+      return {
+        slot: slot || "",
+        name,
+        title: slot ? `${slot} - ${name}` : name,
+        description: cells[2],
+        bonuses: [],
+      };
+    });
+}
+
+function parseFandomDataValue(html, sourceName) {
+  const match = html.match(
+    new RegExp(
+      `<div class="pi-item[\\s\\S]*?data-source="${escapeRegex(sourceName)}"[\\s\\S]*?<div class="pi-data-value pi-font">([\\s\\S]*?)<\\/div>`,
+      "i"
+    )
+  );
+  return match ? normaliseWhitespace(match[1]) : "";
+}
+
+function resolveFandomImage(source, fallbackAlt) {
+  if (!source) return null;
+  if (/^https?:\/\//i.test(source)) {
+    return {
+      src: source,
+      alt: fallbackAlt,
+    };
+  }
+
+  const resolved = resolveRelativePath("heroes/index.html", source);
+  if (!isImageAsset(resolved)) return null;
+
+  const absolutePath = path.join(fandomRoot, resolved);
+  if (!fs.existsSync(absolutePath) || fs.statSync(absolutePath).isDirectory()) return null;
+
+  return {
+    src: `fandom/${resolved}`,
+    alt: fallbackAlt,
+  };
+}
+
+function parseFandomHeroSkills(html, fallbackName) {
+  const tableMatch = html.match(/id="Skills"[\s\S]*?<table class="fandom-table">[\s\S]*?<tbody>([\s\S]*?)<\/tbody>\s*<\/table>/i);
+  if (!tableMatch) return [];
+
+  const defaultSlots = ["Auto Attack", "Tactics", "Passive", "Expertise"];
+
+  return [...tableMatch[1].matchAll(/<tr>([\s\S]*?)<\/tr>/gi)]
+    .map((rowMatch) => rowMatch[1])
+    .filter((rowHtml) => rowHtml.includes("<td"))
+    .map((rowHtml, index) => {
+      const cellMatches = [...rowHtml.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)];
+      if (cellMatches.length < 2) return null;
+
+      const firstCellHtml = cellMatches[0][1];
+      const plainLabel = normaliseWhitespace(firstCellHtml.replace(/<figure[\s\S]*?<\/figure>/gi, " "));
+      const caption = normaliseWhitespace(extractMatch(firstCellHtml, /<p class="caption">([\s\S]*?)<\/p>/i));
+      const labelSlot = normaliseSkillSlot(plainLabel);
+      const captionSlot = normaliseSkillSlot(caption);
+      const slot = labelSlot || captionSlot || defaultSlots[index] || "";
+      const name =
+        (labelSlot && caption) || (!labelSlot && !captionSlot)
+          ? caption || plainLabel || slot
+          : plainLabel || caption || slot;
+      const imageTag = firstCellHtml.match(/<img\b[^>]*>/i)?.[0] ?? "";
+
+      return {
+        slot,
+        name,
+        title: slot ? `${slot} - ${name}` : name,
+        description: normaliseWhitespace(cellMatches[1][1]),
+        bonuses: cellMatches
+          .slice(2)
+          .map((cell) => normaliseWhitespace(cell[1]))
+          .filter(Boolean),
+        image: resolveFandomImage(getImageSource(imageTag), `${fallbackName} ${name}`),
+      };
+    })
+    .filter(Boolean);
+}
+
+function parseFandomHeroFiles() {
+  const fandomHeroesRoot = path.join(projectRoot, "mirror", "fandom", "heroes");
+  if (!fs.existsSync(fandomHeroesRoot)) return [];
+
+  return fs
+    .readdirSync(fandomHeroesRoot)
+    .filter((fileName) => fileName.endsWith(".html"))
+    .filter((fileName) => !["index.html", "Store.html"].includes(fileName))
+    .map((fileName) => {
+      const absolutePath = path.join(fandomHeroesRoot, fileName);
+      const html = fs.readFileSync(absolutePath, "utf8");
+      const name = normaliseWhitespace(path.basename(fileName, ".html"));
+      const alias = parseFandomDataValue(html, "alias");
+      const rarity = parseFandomDataValue(html, "rarity");
+      const troopType = parseFandomDataValue(html, "hero_troop_type");
+      const ability = normaliseHeroAbility(parseFandomDataValue(html, "class"));
+      const description =
+        normaliseWhitespace(extractMatch(html, /id="Description"[\s\S]*?<\/h2>\s*<p>([\s\S]*?)<\/p>/i)) || "";
+      const imageTag = html.match(/<figure class="pi-item pi-image"[\s\S]*?<img\b[^>]*>/i)?.[0] ?? "";
+
+      return {
+        id: slugify(name),
+        name,
+        alias,
+        rarity,
+        troopType,
+        ability,
+        description,
+        image: resolveFandomImage(getImageSource(imageTag), name),
+        skills: parseFandomHeroSkills(html, name),
+        sourcePath: path.join("fandom", "heroes", fileName).replaceAll("\\", "/"),
+      };
+    });
 }
 
 function parseHeroIntel() {
@@ -245,6 +400,8 @@ function parseHeroIntel() {
   const html = fs.readFileSync(heroesAbsolutePath, "utf8");
   const contentHtml = extractBalancedDiv(html, 'entry-content si-entry');
   if (!contentHtml) return null;
+  const fandomHeroes = parseFandomHeroFiles();
+  const fandomHeroesById = new Map(fandomHeroes.map((hero) => [hero.id, hero]));
 
   const introItems = parseTextBlocks(extractHeadingSection(contentHtml, "introduction"));
   const typeItems = parseTextBlocks(extractHeadingSection(contentHtml, "types"));
@@ -285,13 +442,17 @@ function parseHeroIntel() {
 
     const headingText = normaliseWhitespace(match[2]);
     const [namePart, titlePart] = headingText.split(/\s+[–-]\s+/);
+    const id = slugify(namePart || headingText);
+    const fandomHero = fandomHeroesById.get(id);
     const description = parseParagraphs(blockHtml).find(Boolean) ?? "";
 
     const listItems = parseListItems(blockHtml);
     const rarity = listItems.find((item) => item.toLowerCase().startsWith("rarity:"))?.split(":")[1]?.trim() ?? "";
     const type = listItems.find((item) => item.toLowerCase().startsWith("type:"))?.split(":")[1]?.trim() ?? "";
-    const ability = listItems.find((item) => item.toLowerCase().startsWith("ability:"))?.split(":")[1]?.trim() ?? "";
-    const gear = gearByAbility[ability.toLowerCase()] ?? {
+    const ability = normaliseHeroAbility(
+      listItems.find((item) => item.toLowerCase().startsWith("ability:"))?.split(":")[1]?.trim() ?? ""
+    );
+    const gear = gearByAbility[ability] ?? {
       recommended: [],
       summary: "See the mirrored gears guide for general gear upgrade priorities.",
     };
@@ -306,24 +467,47 @@ function parseHeroIntel() {
     const image = imageTag ? resolveImage(heroesRelativePath, getAttr(imageTag, "src"), namePart?.trim() || headingText) : null;
 
     return {
-      id: slugify(namePart || headingText),
+      id,
       name: (namePart || headingText).trim(),
-      title: (titlePart || "").trim(),
-      description,
-      rarity,
-      type,
+      title: fandomHero?.alias || (titlePart || "").trim(),
+      alias: fandomHero?.alias || (titlePart || "").trim(),
+      description: fandomHero?.description || description,
+      rarity: fandomHero?.rarity || rarity,
+      type: fandomHero?.troopType || titleCase(type),
       ability,
       gear,
-      image,
-      skills: parseHeroSkills(blockHtml),
+      image: fandomHero?.image || image || null,
+      skills: fandomHero?.skills?.length ? fandomHero.skills : parseHeroSkills(blockHtml),
+      sourcePaths: [heroesRelativePath, ...(fandomHero ? [fandomHero.sourcePath] : [])],
     };
   });
+
+  const mergedIds = new Set(heroes.map((hero) => hero.id));
+  const fandomOnlyHeroes = fandomHeroes
+    .filter((hero) => !mergedIds.has(hero.id))
+    .map((hero) => ({
+      id: hero.id,
+      name: hero.name,
+      title: hero.alias,
+      alias: hero.alias,
+      description: hero.description,
+      rarity: hero.rarity,
+      type: hero.troopType || "",
+      ability: hero.ability,
+      gear: gearByAbility[hero.ability] ?? {
+        recommended: [],
+        summary: "See the mirrored gears guide for general gear upgrade priorities.",
+      },
+      image: hero.image,
+      skills: hero.skills,
+      sourcePaths: [hero.sourcePath],
+    }));
 
   return {
     overview: introItems,
     typeGuide: typeItems,
     abilityGuide: abilityItems,
-    heroes,
+    heroes: [...heroes, ...fandomOnlyHeroes].sort((left, right) => left.name.localeCompare(right.name)),
   };
 }
 
@@ -577,6 +761,21 @@ const heroIntel = parseHeroIntel() ?? {
   heroes: [],
 };
 
+function markImageForCode(image) {
+  if (!image) return null;
+
+  const marker = /^https?:\/\//i.test(image.src)
+    ? "__REMOTE__"
+    : image.src.startsWith("fandom/")
+      ? "__FANDOM__"
+      : "__ASSET__";
+
+  return {
+    ...image,
+    src: `${marker}${image.src}`,
+  };
+}
+
 const output = `/* eslint-disable */
 // This file is auto-generated by scripts/generate-mirror-content.mjs
 export const mirrorContent = {
@@ -595,16 +794,18 @@ export const mirrorContent = {
       ...heroIntel,
       heroes: heroIntel.heroes.map((hero) => ({
         ...hero,
-        image: hero.image
-          ? {
-              alt: hero.image.alt,
-              src: `__ASSET__${hero.image.src}`,
-            }
-          : null,
+        image: markImageForCode(hero.image),
+        skills: hero.skills.map((skill) => ({
+          ...skill,
+          image: markImageForCode(skill.image),
+        })),
       })),
     },
     1
-  ).replace(/"__ASSET__(.*?)"/g, (_, assetPath) => assetExpression(assetPath))},
+  )
+    .replace(/"__ASSET__(.*?)"/g, (_, assetPath) => assetExpression(assetPath))
+    .replace(/"__FANDOM__(.*?)"/g, (_, assetPath) => fandomAssetExpression(assetPath.replace(/^fandom\//, "")))
+    .replace(/"__REMOTE__(.*?)"/g, (_, source) => imageExpression(source))},
   categories: ${toCode(categories, 1)},
   featuredGuideIds: ${toCode(featuredGuideIds, 1)},
   faqs: ${toCode(faqFromGuides(guidesBySlug), 1)},
