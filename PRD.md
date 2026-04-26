@@ -130,6 +130,10 @@ When images are used in the app, prefer mirrored images and assets from `mirror/
 
 The visual direction should feel tactical and polished, matching the Last War theme without sacrificing readability. The UI should feel modern, organized, and easy to scan, with strong contrast and clear hierarchy in both light and dark themes.
 
+## Copyright
+
+In the footer of the site, mention in clear: "The content of this site was adapted from https://www.lastwartutorial.com/ and https://last-war-survival.fandom.com/ (as links)
+
 ## Implementation guidance
 
 - Prefer content structures that map well to the mirrored site

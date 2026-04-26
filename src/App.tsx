@@ -1231,6 +1231,30 @@ function App() {
           </Card>
         </section>
       </main>
+
+      <footer className="border-t border-border/60 bg-background/95">
+        <div className="mx-auto max-w-7xl px-4 py-6 text-sm text-muted-foreground sm:px-6 lg:px-8">
+          The content of this site was adapted from{" "}
+          <a
+            href="https://www.lastwartutorial.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            https://www.lastwartutorial.com/
+          </a>{" "}
+          and{" "}
+          <a
+            href="https://last-war-survival.fandom.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            https://last-war-survival.fandom.com/
+          </a>
+          .
+        </div>
+      </footer>
     </div>
   );
 }

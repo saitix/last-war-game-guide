@@ -5,6 +5,7 @@ This project is a Last War companion app focused on season mechanics, events, gu
 ## Source of truth
 
 The content source of truth is the local mirror at `mirror/www.lastwartutorial.com`.
+Secondary source of truth (for heroes) is the local mirror at `mirror/fandom/heroes`.
 
 - Use mirrored content and mirrored images/assets from `mirror/www.lastwartutorial.com`
 - Do not treat the live website as the runtime source
