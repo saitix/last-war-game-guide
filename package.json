@@ -4,9 +4,11 @@
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "dev": "vite",
+        "dev": "node scripts/generate-mirror-content.mjs && vite",
         "kill": "fuser -k 5000/tcp",
-        "build": "tsc -b --noCheck && vite build",
+        "build": "node scripts/generate-mirror-content.mjs && tsc -b --noCheck && vite build",
+        "build:app": "node scripts/generate-mirror-content.mjs && tsc -b --noCheck && vite build",
+        "build:mirror": "bash scripts/build-mirror.sh",
         "lint": "eslint .",
         "optimize": "vite optimize",
         "preview": "vite preview"
