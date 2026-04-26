@@ -113,6 +113,18 @@ function getAttr(tag, attrName) {
 }
 
 function extractBalancedDiv(html, marker) {
+  if (marker === "entry-content si-entry") {
+    const entryMatch = html.match(/<div class="entry-content si-entry"[^>]*>/i);
+    if (!entryMatch || entryMatch.index === undefined) return "";
+
+    const start = entryMatch.index;
+    const commentIndex = html.indexOf('<section id="comments"', start);
+    const articleEndIndex = html.indexOf("</article><!-- #post", start);
+    const endCandidates = [commentIndex, articleEndIndex].filter((index) => index > start);
+    const end = endCandidates.length > 0 ? Math.min(...endCandidates) : -1;
+    return end > start ? html.slice(start, end) : html.slice(start);
+  }
+
   const markerIndex = html.indexOf(marker);
   if (markerIndex < 0) return "";
 
@@ -168,6 +180,151 @@ function resolveImage(pageRelativePath, source, fallbackAlt) {
 
 function assetExpression(assetRelativePath) {
   return `new URL(${JSON.stringify(`../../mirror/www.lastwartutorial.com/${assetRelativePath}`)}, import.meta.url).href`;
+}
+
+function escapeRegex(input) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractHeadingSection(html, anchor) {
+  const headingRegex = new RegExp(`<h([234])\\b[^>]*id=["']${escapeRegex(anchor)}["'][^>]*>[\\s\\S]*?<\\/h\\1>`, "i");
+  const startMatch = headingRegex.exec(html);
+  if (!startMatch || startMatch.index === undefined) return "";
+
+  const start = startMatch.index;
+  const level = Number(startMatch[1]);
+  const nextHeadingRegex = /<h([234])\b[^>]*id=["'][^"']+["'][^>]*>[\s\S]*?<\/h\1>/gi;
+  nextHeadingRegex.lastIndex = start + startMatch[0].length;
+
+  let nextMatch;
+  while ((nextMatch = nextHeadingRegex.exec(html))) {
+    const nextLevel = Number(nextMatch[1]);
+    if (nextLevel <= level) {
+      return html.slice(start, nextMatch.index);
+    }
+  }
+
+  return html.slice(start);
+}
+
+function parseParagraphs(html) {
+  return [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map((match) => normaliseWhitespace(match[1]))
+    .filter(Boolean);
+}
+
+function parseListItems(html) {
+  return [...html.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)]
+    .map((match) => normaliseWhitespace(match[1]))
+    .filter(Boolean);
+}
+
+function parseTextBlocks(html) {
+  return [...parseParagraphs(html), ...parseListItems(html)];
+}
+
+function parseHeroSkills(blockHtml) {
+  const tableMatch = blockHtml.match(/<table>[\s\S]*?<tbody>([\s\S]*?)<\/tbody><\/table>/i);
+  if (!tableMatch) return [];
+
+  return [...tableMatch[1].matchAll(/<tr>([\s\S]*?)<\/tr>/gi)]
+    .slice(1)
+    .map((rowMatch) => [...rowMatch[1].matchAll(/<td>([\s\S]*?)<\/td>/gi)].map((cell) => normaliseWhitespace(cell[1])))
+    .filter((cells) => cells.length >= 3)
+    .map((cells) => ({
+      name: cells[0],
+      description: cells[2],
+    }));
+}
+
+function parseHeroIntel() {
+  const heroesRelativePath = "heroes/index.html";
+  const heroesAbsolutePath = path.join(mirrorRoot, heroesRelativePath);
+  if (!fs.existsSync(heroesAbsolutePath)) return null;
+
+  const html = fs.readFileSync(heroesAbsolutePath, "utf8");
+  const contentHtml = extractBalancedDiv(html, 'entry-content si-entry');
+  if (!contentHtml) return null;
+
+  const introItems = parseTextBlocks(extractHeadingSection(contentHtml, "introduction"));
+  const typeItems = parseTextBlocks(extractHeadingSection(contentHtml, "types"));
+  const abilityItems = parseTextBlocks(extractHeadingSection(contentHtml, "ability"));
+
+  const gearByAbility = {
+    attacker: {
+      recommended: parseListItems(extractHeadingSection(contentHtml, "ability-attack")),
+      summary: "Attack heroes are best upgraded with attack-focused gear from the mirror guide.",
+    },
+    defender: {
+      recommended: parseListItems(extractHeadingSection(contentHtml, "ability-defense")),
+      summary: "Defense heroes are best upgraded with survivability-focused gear from the mirror guide.",
+    },
+    support: {
+      recommended: [],
+      summary: "The mirrored hero guide does not list a dedicated support-gear pair, so use the main gears guide for situational upgrades.",
+    },
+  };
+
+  const availableHeroesHtml = extractHeadingSection(contentHtml, "available-heroes");
+  if (!availableHeroesHtml) {
+    return {
+      overview: introItems,
+      typeGuide: typeItems,
+      abilityGuide: abilityItems,
+      heroes: [],
+    };
+  }
+
+  const heroHeadingMatches = [...availableHeroesHtml.matchAll(/<h3\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/h3>/gi)];
+
+  const heroes = heroHeadingMatches.map((match, index) => {
+    const next = heroHeadingMatches[index + 1];
+    const blockStart = match.index ?? 0;
+    const blockEnd = next ? next.index ?? availableHeroesHtml.length : availableHeroesHtml.length;
+    const blockHtml = availableHeroesHtml.slice(blockStart, blockEnd);
+
+    const headingText = normaliseWhitespace(match[2]);
+    const [namePart, titlePart] = headingText.split(/\s+[–-]\s+/);
+    const description = parseParagraphs(blockHtml).find(Boolean) ?? "";
+
+    const listItems = parseListItems(blockHtml);
+    const rarity = listItems.find((item) => item.toLowerCase().startsWith("rarity:"))?.split(":")[1]?.trim() ?? "";
+    const type = listItems.find((item) => item.toLowerCase().startsWith("type:"))?.split(":")[1]?.trim() ?? "";
+    const ability = listItems.find((item) => item.toLowerCase().startsWith("ability:"))?.split(":")[1]?.trim() ?? "";
+    const gear = gearByAbility[ability.toLowerCase()] ?? {
+      recommended: [],
+      summary: "See the mirrored gears guide for general gear upgrade priorities.",
+    };
+
+    const imageTag = [...blockHtml.matchAll(/<img\b[^>]*>/gi)]
+      .map((imgMatch) => imgMatch[0])
+      .find((tag) => {
+        const src = getAttr(tag, "src");
+        return src.includes("/wp-content/uploads/") && !src.includes("skill");
+      });
+
+    const image = imageTag ? resolveImage(heroesRelativePath, getAttr(imageTag, "src"), namePart?.trim() || headingText) : null;
+
+    return {
+      id: slugify(namePart || headingText),
+      name: (namePart || headingText).trim(),
+      title: (titlePart || "").trim(),
+      description,
+      rarity,
+      type,
+      ability,
+      gear,
+      image,
+      skills: parseHeroSkills(blockHtml),
+    };
+  });
+
+  return {
+    overview: introItems,
+    typeGuide: typeItems,
+    abilityGuide: abilityItems,
+    heroes,
+  };
 }
 
 function classifyGuide(slug, title, description) {
@@ -413,6 +570,12 @@ const siteMeta = parseGuide("index.html") ?? {
   description: "Mirror-backed Last War companion app",
   coverImage: "",
 };
+const heroIntel = parseHeroIntel() ?? {
+  overview: [],
+  typeGuide: [],
+  abilityGuide: [],
+  heroes: [],
+};
 
 const output = `/* eslint-disable */
 // This file is auto-generated by scripts/generate-mirror-content.mjs
@@ -427,6 +590,21 @@ export const mirrorContent = {
     guideCount: ${guides.length},
     sectionCount: ${totalSections},
   },
+  heroIntel: ${toCode(
+    {
+      ...heroIntel,
+      heroes: heroIntel.heroes.map((hero) => ({
+        ...hero,
+        image: hero.image
+          ? {
+              alt: hero.image.alt,
+              src: `__ASSET__${hero.image.src}`,
+            }
+          : null,
+      })),
+    },
+    1
+  ).replace(/"__ASSET__(.*?)"/g, (_, assetPath) => assetExpression(assetPath))},
   categories: ${toCode(categories, 1)},
   featuredGuideIds: ${toCode(featuredGuideIds, 1)},
   faqs: ${toCode(faqFromGuides(guidesBySlug), 1)},

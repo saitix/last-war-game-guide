@@ -4,23 +4,21 @@ import {
   BookOpen,
   CalendarDots,
   CaretRight,
-  CheckCircle,
   Clock,
   Fire,
-  House,
+  Flag,
+  Lightning,
   List,
   MagnifyingGlass,
   MapPinLine,
   Moon,
-  NotePencil,
   ShieldCheck,
   Sparkle,
   Sun,
   Sword,
   TrendUp,
-  Users,
+  UserList,
 } from "@phosphor-icons/react";
-import { toast, Toaster } from "sonner";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
@@ -34,24 +32,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -60,23 +42,24 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import { mirrorContent } from "@/data/mirror-content.generated";
 
 type Theme = "light" | "dark";
 type Guide = (typeof mirrorContent.guides)[number];
 type CategoryId = (typeof mirrorContent.categories)[number]["id"];
-type FilterCategory = CategoryId | "all";
 
-interface CommunityTip {
-  id: string;
-  title: string;
-  category: CategoryId;
-  content: string;
-  author: string;
-  relatedGuideId?: string;
-  createdAt: number;
-}
+const appTitle = "Commander Nexus";
+const appSubtitle = "Mirror-backed Last War field manual";
+
+const navigationLinks = [
+  { label: "All Intel", href: "#all-intel", icon: BookOpen },
+  { label: "Seasons", href: "#seasons", icon: CalendarDots },
+  { label: "Heroes", href: "#heroes", icon: UserList },
+  { label: "Events", href: "#events", icon: Fire },
+  { label: "Tips", href: "#gameplay-tips", icon: Lightning },
+  { label: "Progression", href: "#progression", icon: TrendUp },
+  { label: "FAQ", href: "#faq", icon: Sparkle },
+];
 
 const categoryIcons: Record<CategoryId, typeof CalendarDots> = {
   seasons: CalendarDots,
@@ -85,44 +68,154 @@ const categoryIcons: Record<CategoryId, typeof CalendarDots> = {
   systems: ShieldCheck,
 };
 
-const categoryAccent: Record<CategoryId, string> = {
-  seasons: "from-emerald-500/20 via-emerald-400/10 to-transparent",
-  events: "from-orange-500/20 via-amber-400/10 to-transparent",
-  progression: "from-sky-500/20 via-blue-400/10 to-transparent",
-  systems: "from-violet-500/20 via-fuchsia-400/10 to-transparent",
-};
-
-const navigationLinks = [
-  { label: "Guides", href: "#guides", icon: BookOpen },
-  { label: "FAQ", href: "#faq", icon: Sparkle },
-  { label: "Community", href: "#community", icon: Users },
-];
-
 function formatDate(value: string) {
   if (!value) return "Mirror archive";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
-function formatCategory(category: CategoryId) {
-  return mirrorContent.categories.find((item) => item.id === category)?.label ?? category;
+function guideTimestamp(guide: Guide) {
+  return new Date(guide.updatedAt || guide.publishedAt || "1970-01-01").getTime();
+}
+
+function guideSearchText(guide: Guide) {
+  return [
+    guide.title,
+    guide.description,
+    ...guide.tags,
+    ...guide.highlights,
+    ...guide.sections.map((section) => section.title),
+    ...guide.sections.flatMap((section) => section.body),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function extractSeasonNumber(guide: Guide) {
+  const text = `${guide.slug} ${guide.title}`;
+  const match = text.match(/season[- ](\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function isSeasonGuide(guide: Guide) {
+  return extractSeasonNumber(guide) !== null;
+}
+
+function isPrimarySeasonGuide(guide: Guide) {
+  if (!isSeasonGuide(guide)) return false;
+  return !/week-\d+/i.test(guide.slug);
+}
+
+function isHeroGuide(guide: Guide) {
+  return guide.slug === "heroes" || guide.slug === "heroes-teams" || /^heroes?[- ]/i.test(guide.slug);
+}
+
+function isGameplayTipGuide(guide: Guide) {
+  const text = `${guide.slug} ${guide.title}`.toLowerCase();
+  return (
+    text.includes("tricks") ||
+    text.includes("cheats") ||
+    text.includes("best-strategy") ||
+    text.includes("basics") ||
+    text.includes("tips")
+  );
+}
+
+function isEventGuide(guide: Guide) {
+  return guide.category === "events";
+}
+
+function isProgressionGuide(guide: Guide) {
+  if (guide.category === "progression") return true;
+  const text = `${guide.slug} ${guide.title}`.toLowerCase();
+  return text.includes("vip") || text.includes("buildings") || text.includes("daily-progress");
+}
+
+function sectionTag(guide: Guide) {
+  if (isSeasonGuide(guide)) return "Season Intel";
+  if (isHeroGuide(guide)) return "Heroes";
+  if (isEventGuide(guide)) return "Events";
+  if (isGameplayTipGuide(guide)) return "Gameplay Tips";
+  if (isProgressionGuide(guide)) return "Progression";
+  return "Systems";
+}
+
+function GuideCard({
+  guide,
+  active,
+  label,
+  onSelect,
+}: {
+  guide: Guide;
+  active: boolean;
+  label?: string;
+  onSelect: (guideId: string) => void;
+}) {
+  const Icon = categoryIcons[guide.category];
+
+  return (
+    <Card
+      className={`overflow-hidden border-border/70 transition hover:-translate-y-0.5 hover:shadow-lg ${
+        active ? "ring-2 ring-accent/60" : ""
+      }`}
+    >
+      <button type="button" onClick={() => onSelect(guide.id)} className="block w-full text-left">
+        {guide.coverImage ? (
+          <img src={guide.coverImage} alt={guide.title} className="h-44 w-full object-cover" />
+        ) : (
+          <div className="flex h-44 items-center justify-center bg-muted/40">
+            <Icon size={36} className="text-muted-foreground" />
+          </div>
+        )}
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Icon size={16} />
+              {label ?? sectionTag(guide)}
+            </div>
+            <span className="text-xs text-muted-foreground">{guide.readTimeMinutes} min</span>
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold leading-snug">{guide.title}</h3>
+            <p className="line-clamp-3 text-sm text-muted-foreground">{guide.description}</p>
+          </div>
+        </CardContent>
+      </button>
+    </Card>
+  );
 }
 
 function App() {
   const [theme, setTheme] = useKV<Theme>("theme", "dark");
-  const [communityTips, setCommunityTips] = useKV<CommunityTip[]>("community-tips", []);
   const [searchQuery, setSearchQuery] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
-  const [tipDialogOpen, setTipDialogOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<FilterCategory>("all");
-  const [selectedGuideId, setSelectedGuideId] = useState<string>(mirrorContent.featuredGuideIds[0] ?? mirrorContent.guides[0]?.id ?? "");
-  const [tipForm, setTipForm] = useState({
-    title: "",
-    category: "seasons" as CategoryId,
-    content: "",
-    author: "",
-    relatedGuideId: "",
-  });
+  const [selectedGuideId, setSelectedGuideId] = useState<string>("season-6-lost-rainforest");
+  const [selectedHeroId, setSelectedHeroId] = useState<string>(mirrorContent.heroIntel.heroes[0]?.id ?? "");
+
+  const seasonGroups = useMemo(() => {
+    const groups = new Map<number, Guide[]>();
+
+    mirrorContent.guides
+      .filter(isSeasonGuide)
+      .sort((left, right) => guideTimestamp(right) - guideTimestamp(left))
+      .forEach((guide) => {
+        const seasonNumber = extractSeasonNumber(guide);
+        if (seasonNumber === null) return;
+        const current = groups.get(seasonNumber) ?? [];
+        current.push(guide);
+        groups.set(seasonNumber, current);
+      });
+
+    return Array.from(groups.entries())
+      .sort((left, right) => right[0] - left[0])
+      .map(([seasonNumber, guides]) => ({ seasonNumber, guides }));
+  }, []);
+
+  const [activeSeasonTab, setActiveSeasonTab] = useState<number>(seasonGroups[0]?.seasonNumber ?? 6);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -140,90 +233,78 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const filteredGuides = useMemo(() => {
+  const searchResults = useMemo(() => {
     const loweredQuery = searchQuery.trim().toLowerCase();
+    if (!loweredQuery) return mirrorContent.guides;
 
-    return mirrorContent.guides.filter((guide) => {
-      const categoryMatch = activeCategory === "all" || guide.category === activeCategory;
-      if (!categoryMatch) return false;
-      if (!loweredQuery) return true;
+    return mirrorContent.guides.filter((guide) => guideSearchText(guide).includes(loweredQuery));
+  }, [searchQuery]);
 
-      const haystack = [
-        guide.title,
-        guide.description,
-        ...guide.tags,
-        ...guide.highlights,
-        ...guide.sections.map((section) => section.title),
-        ...guide.sections.flatMap((section) => section.body),
-      ]
-        .join(" ")
-        .toLowerCase();
+  const primarySeasonGuides = useMemo(
+    () =>
+      mirrorContent.guides
+        .filter(isPrimarySeasonGuide)
+        .sort((left, right) => {
+          const leftSeason = extractSeasonNumber(left) ?? 0;
+          const rightSeason = extractSeasonNumber(right) ?? 0;
+          if (rightSeason !== leftSeason) return rightSeason - leftSeason;
+          return guideTimestamp(right) - guideTimestamp(left);
+        }),
+    []
+  );
 
-      return haystack.includes(loweredQuery);
-    });
-  }, [activeCategory, searchQuery]);
+  const heroGuides = useMemo(
+    () => mirrorContent.guides.filter(isHeroGuide).sort((left, right) => guideTimestamp(right) - guideTimestamp(left)),
+    []
+  );
+  const gearGuide = useMemo(() => mirrorContent.guides.find((guide) => guide.slug === "gears"), []);
+  const selectedHero =
+    mirrorContent.heroIntel.heroes.find((hero) => hero.id === selectedHeroId) ?? mirrorContent.heroIntel.heroes[0];
+
+  const eventGuides = useMemo(
+    () => mirrorContent.guides.filter(isEventGuide).sort((left, right) => guideTimestamp(right) - guideTimestamp(left)),
+    []
+  );
+
+  const gameplayTipGuides = useMemo(
+    () => mirrorContent.guides.filter(isGameplayTipGuide).sort((left, right) => guideTimestamp(right) - guideTimestamp(left)),
+    []
+  );
+
+  const progressionGuides = useMemo(
+    () => mirrorContent.guides.filter(isProgressionGuide).sort((left, right) => guideTimestamp(right) - guideTimestamp(left)),
+    []
+  );
 
   useEffect(() => {
-    if (!filteredGuides.some((guide) => guide.id === selectedGuideId)) {
-      setSelectedGuideId(filteredGuides[0]?.id ?? mirrorContent.guides[0]?.id ?? "");
+    if (!mirrorContent.guides.some((guide) => guide.id === selectedGuideId)) {
+      setSelectedGuideId(primarySeasonGuides[0]?.id ?? mirrorContent.guides[0]?.id ?? "");
     }
-  }, [filteredGuides, selectedGuideId]);
+  }, [primarySeasonGuides, selectedGuideId]);
 
-  const selectedGuide = filteredGuides.find((guide) => guide.id === selectedGuideId) ?? mirrorContent.guides.find((guide) => guide.id === selectedGuideId) ?? filteredGuides[0];
-  const featuredGuides = mirrorContent.featuredGuideIds
-    .map((id) => mirrorContent.guides.find((guide) => guide.id === id))
-    .filter(Boolean) as Guide[];
+  const selectedGuide =
+    mirrorContent.guides.find((guide) => guide.id === selectedGuideId) ?? primarySeasonGuides[0] ?? mirrorContent.guides[0];
 
-  const seasonalGuideCount = mirrorContent.guides.filter((guide) => guide.category === "seasons").length;
-  const tipsForSelectedGuide = communityTips.filter((tip) => tip.relatedGuideId === selectedGuide?.id);
-
-  const handleTipSubmit = () => {
-    if (!tipForm.title.trim() || !tipForm.content.trim() || !tipForm.author.trim()) {
-      toast.error("Please fill in the title, tip, and author fields.");
-      return;
-    }
-
-    const nextTip: CommunityTip = {
-      id: crypto.randomUUID(),
-      title: tipForm.title.trim(),
-      category: tipForm.category,
-      content: tipForm.content.trim(),
-      author: tipForm.author.trim(),
-      relatedGuideId: tipForm.relatedGuideId || undefined,
-      createdAt: Date.now(),
-    };
-
-    setCommunityTips([nextTip, ...communityTips]);
-    setTipForm({
-      title: "",
-      category: "seasons",
-      content: "",
-      author: "",
-      relatedGuideId: selectedGuide?.id ?? "",
-    });
-    setTipDialogOpen(false);
-    toast.success("Community tip saved locally.");
-  };
+  const activeSeasonGuides =
+    seasonGroups.find((group) => group.seasonNumber === activeSeasonTab)?.guides ?? seasonGroups[0]?.guides ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Toaster richColors position="top-right" />
-
       <CommandDialog
         open={commandOpen}
         onOpenChange={setCommandOpen}
-        title="Search Last War guides"
-        description="Search across the mirrored Last War guide archive."
+        title="Search Commander Nexus"
+        description="Search the mirrored Last War knowledge base."
       >
         <CommandInput
-          placeholder="Search seasons, events, buildings, VIP, progression..."
+          placeholder="Search seasons, heroes, events, progression..."
           value={searchQuery}
           onValueChange={setSearchQuery}
         />
         <CommandList>
           <CommandEmpty>No mirrored guides matched that search.</CommandEmpty>
           <CommandGroup heading="Guides">
-            {filteredGuides.slice(0, 12).map((guide) => (
+            {searchResults.slice(0, 16).map((guide) => (
               <CommandItem
                 key={guide.id}
                 value={`${guide.title} ${guide.description} ${guide.tags.join(" ")}`}
@@ -235,113 +316,13 @@ function App() {
                 <BookOpen />
                 <span className="flex flex-col">
                   <span>{guide.title}</span>
-                  <span className="text-muted-foreground text-xs">{formatCategory(guide.category)}</span>
+                  <span className="text-muted-foreground text-xs">{sectionTag(guide)}</span>
                 </span>
               </CommandItem>
             ))}
           </CommandGroup>
         </CommandList>
       </CommandDialog>
-
-      <Dialog open={tipDialogOpen} onOpenChange={setTipDialogOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Share a community tip</DialogTitle>
-            <DialogDescription>
-              Save your own Last War tip locally so it becomes part of this guide board.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="tip-title">Title</Label>
-              <Input
-                id="tip-title"
-                value={tipForm.title}
-                onChange={(event) => setTipForm((current) => ({ ...current, title: event.target.value }))}
-                placeholder="Example: Best opening priorities for Season 6"
-              />
-            </div>
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="tip-category">Category</Label>
-                <Select
-                  value={tipForm.category}
-                  onValueChange={(value) => setTipForm((current) => ({ ...current, category: value as CategoryId }))}
-                >
-                  <SelectTrigger id="tip-category" className="w-full">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mirrorContent.categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="tip-author">Author</Label>
-                <Input
-                  id="tip-author"
-                  value={tipForm.author}
-                  onChange={(event) => setTipForm((current) => ({ ...current, author: event.target.value }))}
-                  placeholder="Commander name"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="tip-guide">Related guide</Label>
-              <Select
-                value={tipForm.relatedGuideId || "none"}
-                onValueChange={(value) =>
-                  setTipForm((current) => ({
-                    ...current,
-                    relatedGuideId: value === "none" ? "" : value,
-                  }))
-                }
-              >
-                <SelectTrigger id="tip-guide" className="w-full">
-                  <SelectValue placeholder="Attach to a mirrored guide" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No specific guide</SelectItem>
-                  {mirrorContent.guides.map((guide) => (
-                    <SelectItem key={guide.id} value={guide.id}>
-                      {guide.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="tip-content">Tip</Label>
-              <Textarea
-                id="tip-content"
-                rows={6}
-                value={tipForm.content}
-                onChange={(event) => setTipForm((current) => ({ ...current, content: event.target.value }))}
-                placeholder="Share the tactic, timing, or build order that worked for you."
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTipDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleTipSubmit}>
-              <NotePencil weight="fill" />
-              Save tip
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
@@ -350,12 +331,12 @@ function App() {
               <Sword weight="fill" size={20} />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Mirror-backed archive</p>
-              <h1 className="text-lg font-semibold leading-none sm:text-xl">Last War Command Center</h1>
+              <p className="text-sm font-medium text-muted-foreground">{appSubtitle}</p>
+              <h1 className="text-lg font-semibold leading-none sm:text-xl">{appTitle}</h1>
             </div>
           </div>
 
-          <nav className="hidden items-center gap-2 md:flex">
+          <nav className="hidden items-center gap-2 lg:flex">
             {navigationLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -385,22 +366,17 @@ function App() {
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </Button>
 
-            <Button className="hidden sm:inline-flex" onClick={() => setTipDialogOpen(true)}>
-              <NotePencil size={18} />
-              Submit tip
-            </Button>
-
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="md:hidden" aria-label="Open navigation">
+                <Button variant="outline" size="icon" className="lg:hidden" aria-label="Open navigation">
                   <List size={18} />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-full max-w-sm">
                 <SheetHeader>
-                  <SheetTitle>Navigate the archive</SheetTitle>
+                  <SheetTitle>{appTitle}</SheetTitle>
                   <SheetDescription>
-                    Browse mirrored Last War guides, FAQs, and community tips.
+                    Browse the mirror-backed Last War archive by seasons, heroes, events, tips, and FAQ.
                   </SheetDescription>
                 </SheetHeader>
 
@@ -408,10 +384,6 @@ function App() {
                   <Button variant="outline" onClick={() => { setCommandOpen(true); setMobileMenuOpen(false); }}>
                     <MagnifyingGlass size={16} />
                     Search guides
-                  </Button>
-                  <Button onClick={() => { setTipDialogOpen(true); setMobileMenuOpen(false); }}>
-                    <NotePencil size={16} />
-                    Submit a tip
                   </Button>
                   {navigationLinks.map((link) => {
                     const Icon = link.icon;
@@ -432,20 +404,19 @@ function App() {
       </header>
 
       <main className="mx-auto flex max-w-7xl flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <section className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card className="overflow-hidden border-border/70 bg-gradient-to-br from-card via-card to-card/80">
             <CardContent className="grid gap-6 p-0 md:grid-cols-[1.05fr_0.95fr]">
               <div className="flex flex-col justify-between gap-6 p-6 lg:p-8">
                 <div className="space-y-4">
                   <Badge variant="secondary" className="w-fit">
-                    Local mirror source: `mirror/www.lastwartutorial.com`
+                    Source of truth: `mirror/www.lastwartutorial.com`
                   </Badge>
                   <div className="space-y-3">
-                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                      {mirrorContent.site.title}
-                    </h2>
+                    <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{appTitle}</h2>
                     <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                      {mirrorContent.site.description}
+                      A streamlined Last War intel hub built from the local mirror, with season tabs, hero references,
+                      event timelines, gameplay tips, progression guides, and quick FAQ access.
                     </p>
                   </div>
 
@@ -454,7 +425,7 @@ function App() {
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <BookOpen size={16} />
-                          Guides
+                          Intel pages
                         </div>
                         <p className="mt-2 text-2xl font-semibold">{mirrorContent.stats.guideCount}</p>
                       </CardContent>
@@ -463,18 +434,18 @@ function App() {
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <CalendarDots size={16} />
-                          Season pages
+                          Seasons tracked
                         </div>
-                        <p className="mt-2 text-2xl font-semibold">{seasonalGuideCount}</p>
+                        <p className="mt-2 text-2xl font-semibold">{seasonGroups.length}</p>
                       </CardContent>
                     </Card>
                     <Card className="border-border/60 bg-background/50">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Users size={16} />
-                          Community tips
+                          <UserList size={16} />
+                          Heroes tracked
                         </div>
-                        <p className="mt-2 text-2xl font-semibold">{communityTips.length}</p>
+                        <p className="mt-2 text-2xl font-semibold">{mirrorContent.heroIntel.heroes.length}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -483,354 +454,495 @@ function App() {
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={() => setCommandOpen(true)}>
                     <MagnifyingGlass size={18} />
-                    Search the mirror
+                    Search the archive
                   </Button>
-                  {selectedGuide && (
+                  {selectedGuide ? (
                     <Button variant="outline" asChild>
-                      <a href="#guides" onClick={() => setSelectedGuideId(selectedGuide.id)}>
+                      <a href="#guide-detail" onClick={() => setSelectedGuideId(selectedGuide.id)}>
                         <CaretRight size={18} />
-                        Open featured guide
+                        Open selected intel
                       </a>
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
               <div className="relative min-h-72 overflow-hidden">
                 {selectedGuide?.coverImage ? (
-                  <img
-                    src={selectedGuide.coverImage}
-                    alt={selectedGuide.title}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : mirrorContent.site.coverImage ? (
-                  <img
-                    src={mirrorContent.site.coverImage}
-                    alt="Last War Command Center"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
+                  <img src={selectedGuide.coverImage} alt={selectedGuide.title} className="absolute inset-0 h-full w-full object-cover" />
                 ) : null}
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/25 to-transparent" />
-                {selectedGuide && (
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+                {selectedGuide ? (
                   <div className="absolute inset-x-0 bottom-0 space-y-3 p-6">
-                    <Badge className="bg-background/85 text-foreground shadow-sm">{formatCategory(selectedGuide.category)}</Badge>
+                    <Badge className="bg-background/85 text-foreground shadow-sm">{sectionTag(selectedGuide)}</Badge>
                     <div>
                       <h3 className="max-w-lg text-2xl font-semibold">{selectedGuide.title}</h3>
                       <p className="mt-2 max-w-lg text-sm text-foreground/80">{selectedGuide.description}</p>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             </CardContent>
           </Card>
 
           <Card className="border-border/70">
             <CardHeader>
-              <CardTitle>Featured from the mirror</CardTitle>
+              <CardTitle>Main menu</CardTitle>
               <CardDescription>
-                Jump straight into the most useful seasonal and progression guides.
+                The revised PRD menu structure, optimized for quick navigation.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {featuredGuides.map((guide) => {
-                const Icon = categoryIcons[guide.category];
-                const isSelected = guide.id === selectedGuide?.id;
-
+            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              {navigationLinks.map((link) => {
+                const Icon = link.icon;
                 return (
-                  <button
-                    key={guide.id}
-                    type="button"
-                    onClick={() => setSelectedGuideId(guide.id)}
-                    className={`w-full rounded-xl border p-4 text-left transition hover:border-accent/60 hover:bg-accent/5 ${
-                      isSelected ? "border-accent bg-accent/10" : "border-border/60"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Icon size={16} />
-                          {formatCategory(guide.category)}
-                        </div>
-                        <p className="font-semibold">{guide.title}</p>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{guide.description}</p>
-                      </div>
-                      <Badge variant={isSelected ? "default" : "secondary"}>{guide.readTimeMinutes} min</Badge>
-                    </div>
-                  </button>
+                  <Button key={link.href} asChild variant="outline" className="justify-start">
+                    <a href={link.href}>
+                      <Icon size={16} />
+                      {link.label}
+                    </a>
+                  </Button>
                 );
               })}
             </CardContent>
           </Card>
         </section>
 
-        <section id="guides" className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="space-y-6">
-            <Card className="border-border/70">
-              <CardHeader>
-                <CardTitle>Browse the guide library</CardTitle>
-                <CardDescription>
-                  Search and filter the mirrored Last War archive by focus area.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <div className="relative flex-1">
-                    <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-                    <Input
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Search by guide title, topic, or keyword"
-                      className="pl-10"
-                    />
-                  </div>
-                  <Button variant="outline" onClick={() => setCommandOpen(true)}>
-                    Quick search
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={activeCategory === "all" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActiveCategory("all")}
-                  >
-                    All guides
-                  </Button>
-                  {mirrorContent.categories.map((category) => {
-                    const Icon = categoryIcons[category.id];
-                    const count = mirrorContent.guides.filter((guide) => guide.category === category.id).length;
-
-                    return (
-                      <Button
-                        key={category.id}
-                        variant={activeCategory === category.id ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setActiveCategory(category.id)}
-                      >
-                        <Icon size={16} />
-                        {category.label}
-                        <Badge variant="secondary" className="ml-1">{count}</Badge>
-                      </Button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              {filteredGuides.map((guide) => {
-                const Icon = categoryIcons[guide.category];
-                const isSelected = guide.id === selectedGuide?.id;
-
-                return (
-                  <Card
-                    key={guide.id}
-                    className={`overflow-hidden border-border/70 transition hover:-translate-y-0.5 hover:shadow-lg ${
-                      isSelected ? "ring-2 ring-accent/60" : ""
-                    }`}
-                  >
-                    <button type="button" className="block w-full text-left" onClick={() => setSelectedGuideId(guide.id)}>
-                      <div className={`h-1 w-full bg-gradient-to-r ${categoryAccent[guide.category]}`} />
-                      {guide.coverImage ? (
-                        <img src={guide.coverImage} alt={guide.title} className="h-44 w-full object-cover" />
-                      ) : null}
-                      <CardContent className="space-y-3 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Icon size={16} />
-                            {formatCategory(guide.category)}
-                          </div>
-                          <span className="text-xs text-muted-foreground">{guide.readTimeMinutes} min</span>
-                        </div>
-                        <div className="space-y-2">
-                          <h3 className="text-lg font-semibold leading-snug">{guide.title}</h3>
-                          <p className="line-clamp-3 text-sm text-muted-foreground">{guide.description}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {guide.tags.slice(0, 3).map((tag) => (
-                            <Badge key={tag} variant="secondary" className="capitalize">
-                              {tag.replaceAll("-", " ")}
-                            </Badge>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </button>
-                  </Card>
-                );
-              })}
-            </div>
-
-            {filteredGuides.length === 0 ? (
-              <Card className="border-dashed border-border/70">
-                <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-                  <MagnifyingGlass size={28} className="text-muted-foreground" />
-                  <div className="space-y-1">
-                    <p className="font-medium">No guides matched your filters.</p>
-                    <p className="text-sm text-muted-foreground">
-                      Try a broader keyword or reset to all guide categories.
-                    </p>
-                  </div>
-                  <Button variant="outline" onClick={() => { setSearchQuery(""); setActiveCategory("all"); }}>
-                    Reset filters
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : null}
+        <section id="all-intel" className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold sm:text-3xl">All Intel</h2>
+            <p className="text-muted-foreground">
+              Season-organized archive tabs built from the mirrored guide set.
+            </p>
           </div>
 
-          <div className="xl:sticky xl:top-24 xl:self-start">
-            {selectedGuide ? (
-              <Card className="overflow-hidden border-border/70">
-                <ScrollArea className="max-h-[80vh]">
-                  <div className="space-y-6">
-                    {selectedGuide.coverImage ? (
-                      <div className="relative h-72 overflow-hidden">
-                        <img src={selectedGuide.coverImage} alt={selectedGuide.title} className="h-full w-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-                        <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-2 p-5">
-                          <Badge>{formatCategory(selectedGuide.category)}</Badge>
-                          <Badge variant="secondary">{selectedGuide.readTimeMinutes} min read</Badge>
-                        </div>
-                      </div>
-                    ) : null}
+          <Card className="border-border/70">
+            <CardHeader>
+              <CardTitle>Season tabs</CardTitle>
+              <CardDescription>
+                Switch across every season and inspect the linked mirrored pages.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex flex-wrap gap-2">
+                {seasonGroups.map((group) => (
+                  <Button
+                    key={group.seasonNumber}
+                    variant={activeSeasonTab === group.seasonNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveSeasonTab(group.seasonNumber)}
+                  >
+                    Season {group.seasonNumber}
+                    <Badge variant="secondary" className="ml-1">{group.guides.length}</Badge>
+                  </Button>
+                ))}
+              </div>
 
-                    <div className="space-y-6 p-5 pt-0">
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <Clock size={16} />
-                            Updated {formatDate(selectedGuide.updatedAt || selectedGuide.publishedAt)}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <MapPinLine size={16} />
-                            {selectedGuide.sourcePath}
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          <h2 className="text-2xl font-semibold leading-tight sm:text-3xl">{selectedGuide.title}</h2>
-                          <p className="text-base leading-7 text-muted-foreground">{selectedGuide.description}</p>
-                        </div>
-                      </div>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {activeSeasonGuides.map((guide) => (
+                  <GuideCard
+                    key={guide.id}
+                    guide={guide}
+                    active={guide.id === selectedGuide?.id}
+                    label={`Season ${extractSeasonNumber(guide) ?? "?"}`}
+                    onSelect={setSelectedGuideId}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
 
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {selectedGuide.highlights.map((highlight) => (
-                          <Card key={highlight} className="border-border/60 bg-background/70">
-                            <CardContent className="p-4">
-                              <div className="flex items-start gap-3">
-                                <CheckCircle weight="fill" className="mt-0.5 text-accent" size={18} />
-                                <p className="text-sm leading-6">{highlight}</p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold">Guide breakdown</h3>
-                          <Badge variant="secondary">{selectedGuide.sections.length} sections</Badge>
-                        </div>
-                        <Accordion type="single" collapsible className="w-full">
-                          {selectedGuide.sections.map((section) => (
-                            <AccordionItem key={section.id} value={section.id}>
-                              <AccordionTrigger>{section.title}</AccordionTrigger>
-                              <AccordionContent className="space-y-4">
-                                {section.image?.src ? (
-                                  <img
-                                    src={section.image.src}
-                                    alt={section.image.alt}
-                                    className="max-h-72 w-full rounded-xl border border-border/60 object-cover"
-                                  />
-                                ) : null}
-                                {section.body.map((paragraph) => (
-                                  <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
-                                    {paragraph}
-                                  </p>
-                                ))}
-                              </AccordionContent>
-                            </AccordionItem>
-                          ))}
-                        </Accordion>
-                      </div>
-
-                      {selectedGuide.gallery.length > 0 ? (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold">Mirrored images</h3>
-                            <Badge variant="secondary">{selectedGuide.gallery.length} assets</Badge>
-                          </div>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {selectedGuide.gallery.slice(0, 6).map((image) => (
-                              <figure key={`${image.src}-${image.alt}`} className="overflow-hidden rounded-xl border border-border/60">
-                                <img src={image.src} alt={image.alt} className="h-44 w-full object-cover" />
-                                <figcaption className="border-t border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                                  {image.alt}
-                                </figcaption>
-                              </figure>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/30 p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <h3 className="font-semibold">Community notes for this guide</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Save local commander notes and strategies alongside the mirrored reference.
-                            </p>
-                          </div>
-                          <Button variant="outline" onClick={() => {
-                            setTipForm((current) => ({ ...current, relatedGuideId: selectedGuide.id, category: selectedGuide.category }));
-                            setTipDialogOpen(true);
-                          }}>
-                            <NotePencil size={16} />
-                            Add note
-                          </Button>
-                        </div>
-                        {tipsForSelectedGuide.length > 0 ? (
-                          <div className="space-y-3">
-                            {tipsForSelectedGuide.map((tip) => (
-                              <Card key={tip.id} className="border-border/60 bg-background/80">
-                                <CardContent className="space-y-2 p-4">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <p className="font-medium">{tip.title}</p>
-                                    <Badge variant="secondary">{formatDate(new Date(tip.createdAt).toISOString())}</Badge>
-                                  </div>
-                                  <p className="text-sm leading-6 text-muted-foreground">{tip.content}</p>
-                                  <p className="text-xs text-muted-foreground">Submitted by {tip.author}</p>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            No local commander notes yet for this guide.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </ScrollArea>
-              </Card>
-            ) : null}
+        <section id="seasons" className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Seasons</h2>
+            <p className="text-muted-foreground">
+              Season mechanics, preseason overviews, and primary seasonal guides since inception.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {primarySeasonGuides.map((guide) => (
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+            ))}
           </div>
         </section>
 
-        <section id="faq" className="grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
+        <section id="heroes" className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Heroes</h2>
+            <p className="text-muted-foreground">
+              Mirror-backed hero roster with rarity, type, ability, skills, gear guidance, and hero imagery.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="border-border/70 lg:col-span-1">
+              <CardHeader>
+                <CardTitle>Hero system primer</CardTitle>
+                <CardDescription>
+                  The mirrored hero guide explains rarity, types, and ability roles before the individual roster.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Overview</h3>
+                  <ul className="space-y-2 text-sm leading-6 text-muted-foreground">
+                    {mirrorContent.heroIntel.overview.slice(0, 4).map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span className="mt-2 size-1.5 rounded-full bg-accent" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Hero types</h3>
+                  <ul className="space-y-2 text-sm leading-6 text-muted-foreground">
+                    {mirrorContent.heroIntel.typeGuide.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span className="mt-2 size-1.5 rounded-full bg-accent" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ability roles</h3>
+                  <ul className="space-y-2 text-sm leading-6 text-muted-foreground">
+                    {mirrorContent.heroIntel.abilityGuide.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span className="mt-2 size-1.5 rounded-full bg-accent" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {gearGuide ? (
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gear guide</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{gearGuide.description}</p>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Hero roster</CardTitle>
+                <CardDescription>
+                  Every mirrored hero entry with the requested specs and skill breakdown.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {mirrorContent.heroIntel.heroes.map((hero) => (
+                    <button
+                      key={hero.id}
+                      type="button"
+                      onClick={() => setSelectedHeroId(hero.id)}
+                      className={`overflow-hidden rounded-xl border text-left transition hover:border-accent/60 hover:bg-accent/5 ${
+                        hero.id === selectedHero?.id ? "border-accent bg-accent/10" : "border-border/60"
+                      }`}
+                    >
+                      {hero.image?.src ? (
+                        <img src={hero.image.src} alt={hero.name} className="h-44 w-full object-cover" />
+                      ) : null}
+                      <div className="space-y-3 p-4">
+                        <div>
+                          <p className="font-semibold">{hero.name}</p>
+                          <p className="text-sm text-muted-foreground">{hero.title}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="secondary">{hero.rarity}</Badge>
+                          <Badge variant="secondary">{hero.type}</Badge>
+                          <Badge variant="secondary">{hero.ability}</Badge>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {selectedHero ? (
+                  <div className="grid gap-5 rounded-2xl border border-border/60 bg-muted/20 p-4 md:grid-cols-[0.44fr_0.56fr]">
+                    <div className="space-y-4">
+                      {selectedHero.image?.src ? (
+                        <img
+                          src={selectedHero.image.src}
+                          alt={selectedHero.name}
+                          className="max-h-96 w-full rounded-xl border border-border/60 object-cover"
+                        />
+                      ) : null}
+                      <div className="space-y-2">
+                        <h3 className="text-2xl font-semibold">{selectedHero.name}</h3>
+                        <p className="text-muted-foreground">{selectedHero.title}</p>
+                        <p className="text-sm leading-7 text-muted-foreground">{selectedHero.description}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge>{selectedHero.rarity}</Badge>
+                        <Badge variant="secondary">{selectedHero.type}</Badge>
+                        <Badge variant="secondary">{selectedHero.ability}</Badge>
+                      </div>
+
+                      <div className="space-y-3 rounded-xl border border-border/60 bg-background/70 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Gear</h4>
+                          {selectedHero.gear.recommended.length > 0 ? (
+                            <Badge variant="secondary">{selectedHero.gear.recommended.length} picks</Badge>
+                          ) : null}
+                        </div>
+                        <p className="text-sm leading-7 text-muted-foreground">{selectedHero.gear.summary}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedHero.gear.recommended.length > 0 ? (
+                            selectedHero.gear.recommended.map((item) => (
+                              <Badge key={item} variant="outline">
+                                {item}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Badge variant="outline">See general gears guide</Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-lg font-semibold">Skills</h4>
+                        <Badge variant="secondary">{selectedHero.skills.length}</Badge>
+                      </div>
+                      <Accordion type="single" collapsible className="w-full">
+                        {selectedHero.skills.map((skill) => (
+                          <AccordionItem key={skill.name} value={skill.name}>
+                            <AccordionTrigger>{skill.name}</AccordionTrigger>
+                            <AccordionContent>
+                              <p className="text-sm leading-7 text-muted-foreground">{skill.description}</p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    </div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {heroGuides.map((guide) => (
+              <GuideCard
+                key={guide.id}
+                guide={guide}
+                active={guide.id === selectedGuide?.id}
+                label="Hero guide"
+                onSelect={setSelectedGuideId}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section id="events" className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Events</h2>
+            <p className="text-muted-foreground">
+              Event pages from the mirror sorted by the latest updated timeline first.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {eventGuides.map((guide) => (
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+            ))}
+          </div>
+        </section>
+
+        <section id="gameplay-tips" className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Gameplay Tips</h2>
+            <p className="text-muted-foreground">
+              Practical strategy, tricks, and beginner-friendly guidance pulled from the mirror.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {gameplayTipGuides.map((guide) => (
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+            ))}
+          </div>
+        </section>
+
+        <section id="progression" className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold sm:text-3xl">Progression and Optimization</h2>
+            <p className="text-muted-foreground">
+              Base growth, VIP value, buildings, and long-term efficiency references.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {progressionGuides.map((guide) => (
+              <GuideCard key={guide.id} guide={guide} active={guide.id === selectedGuide?.id} onSelect={setSelectedGuideId} />
+            ))}
+          </div>
+        </section>
+
+        <section id="guide-detail" className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+          <Card className="border-border/70">
+            <CardHeader>
+              <CardTitle>Search and jump</CardTitle>
+              <CardDescription>
+                Search specific intel directly or use the quick launcher.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search title, guide topic, hero, or season term"
+                    className="pl-10"
+                  />
+                </div>
+                <Button variant="outline" onClick={() => setCommandOpen(true)}>
+                  Quick search
+                </Button>
+              </div>
+
+              <div className="grid gap-3">
+                {searchResults.slice(0, 8).map((guide) => (
+                  <button
+                    key={guide.id}
+                    type="button"
+                    onClick={() => setSelectedGuideId(guide.id)}
+                    className={`rounded-xl border p-4 text-left transition hover:border-accent/60 hover:bg-accent/5 ${
+                      guide.id === selectedGuide?.id ? "border-accent bg-accent/10" : "border-border/60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="font-medium">{guide.title}</p>
+                        <p className="text-sm text-muted-foreground">{sectionTag(guide)}</p>
+                      </div>
+                      <Badge variant="secondary">{guide.readTimeMinutes} min</Badge>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {selectedGuide ? (
+            <Card className="overflow-hidden border-border/70">
+              <ScrollArea className="max-h-[82vh]">
+                <div className="space-y-6">
+                  {selectedGuide.coverImage ? (
+                    <div className="relative h-72 overflow-hidden">
+                      <img src={selectedGuide.coverImage} alt={selectedGuide.title} className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-2 p-5">
+                        <Badge>{sectionTag(selectedGuide)}</Badge>
+                        <Badge variant="secondary">{selectedGuide.readTimeMinutes} min read</Badge>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-6 p-5 pt-0">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock size={16} />
+                          Updated {formatDate(selectedGuide.updatedAt || selectedGuide.publishedAt)}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPinLine size={16} />
+                          {selectedGuide.sourcePath}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        <h2 className="text-2xl font-semibold leading-tight sm:text-3xl">{selectedGuide.title}</h2>
+                        <p className="text-base leading-7 text-muted-foreground">{selectedGuide.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {selectedGuide.highlights.map((highlight) => (
+                        <Card key={highlight} className="border-border/60 bg-background/70">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <Flag weight="fill" className="mt-0.5 text-accent" size={18} />
+                              <p className="text-sm leading-6">{highlight}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold">Guide breakdown</h3>
+                        <Badge variant="secondary">{selectedGuide.sections.length} sections</Badge>
+                      </div>
+                      <Accordion type="single" collapsible className="w-full">
+                        {selectedGuide.sections.map((section) => (
+                          <AccordionItem key={section.id} value={section.id}>
+                            <AccordionTrigger>{section.title}</AccordionTrigger>
+                            <AccordionContent className="space-y-4">
+                              {section.image?.src ? (
+                                <img
+                                  src={section.image.src}
+                                  alt={section.image.alt}
+                                  className="max-h-72 w-full rounded-xl border border-border/60 object-cover"
+                                />
+                              ) : null}
+                              {section.body.map((paragraph) => (
+                                <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
+                                  {paragraph}
+                                </p>
+                              ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    </div>
+
+                    {selectedGuide.gallery.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-semibold">Mirrored images</h3>
+                          <Badge variant="secondary">{selectedGuide.gallery.length} assets</Badge>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {selectedGuide.gallery.slice(0, 6).map((image) => (
+                            <figure key={`${image.src}-${image.alt}`} className="overflow-hidden rounded-xl border border-border/60">
+                              <img src={image.src} alt={image.alt} className="h-44 w-full object-cover" />
+                              <figcaption className="border-t border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                                {image.alt}
+                              </figcaption>
+                            </figure>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </ScrollArea>
+            </Card>
+          ) : null}
+        </section>
+
+        <section id="faq" className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr]">
           <Card className="border-border/70">
             <CardHeader>
               <CardTitle>Frequently asked questions</CardTitle>
               <CardDescription>
-                Quick answers derived from the mirrored guide archive.
+                Quick answers based on mirrored guides and seasonal references.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm leading-7 text-muted-foreground">
               <p>
-                These answers are intentionally short so players can get oriented fast on mobile and then jump into the related guide.
-              </p>
-              <p>
-                Use the search or featured guides when you want the full seasonal breakdown, screenshots, and mirrored section details.
+                Use FAQ for quick orientation, then jump into the linked guide when you need the full breakdown,
+                screenshots, and section-by-section detail.
               </p>
             </CardContent>
           </Card>
@@ -844,11 +956,7 @@ function App() {
                     <AccordionContent className="space-y-3">
                       <p className="text-sm leading-7 text-muted-foreground">{faq.answer}</p>
                       {faq.guideId ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedGuideId(faq.guideId)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setSelectedGuideId(faq.guideId)}>
                           <CaretRight size={16} />
                           Open related guide
                         </Button>
@@ -859,75 +967,6 @@ function App() {
               </Accordion>
             </CardContent>
           </Card>
-        </section>
-
-        <section id="community" className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-          <Card className="border-border/70">
-            <CardHeader>
-              <CardTitle>Community tips board</CardTitle>
-              <CardDescription>
-                Keep your own Last War notes alongside the mirror-backed reference library.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
-                <p className="text-sm leading-7 text-muted-foreground">
-                  Tip submissions are stored locally in the app and can be tied to a specific mirrored guide or kept as a general strategy note.
-                </p>
-              </div>
-              <Button onClick={() => setTipDialogOpen(true)}>
-                <NotePencil size={18} />
-                Submit a new tip
-              </Button>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {communityTips.length > 0 ? (
-              communityTips.map((tip) => {
-                const Icon = categoryIcons[tip.category];
-                const relatedGuide = mirrorContent.guides.find((guide) => guide.id === tip.relatedGuideId);
-
-                return (
-                  <Card key={tip.id} className="border-border/70">
-                    <CardContent className="space-y-4 p-5">
-                      <div className="flex items-center justify-between gap-3">
-                        <Badge variant="secondary" className="inline-flex items-center gap-1">
-                          <Icon size={14} />
-                          {formatCategory(tip.category)}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">{formatDate(new Date(tip.createdAt).toISOString())}</span>
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-semibold">{tip.title}</h3>
-                        <p className="text-sm leading-7 text-muted-foreground">{tip.content}</p>
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <p>Shared by {tip.author}</p>
-                        {relatedGuide ? <p>Attached to: {relatedGuide.title}</p> : null}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            ) : (
-              <Card className="border-dashed border-border/70 md:col-span-2">
-                <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-                  <House size={28} className="text-muted-foreground" />
-                  <div className="space-y-1">
-                    <p className="font-medium">No community tips saved yet.</p>
-                    <p className="text-sm text-muted-foreground">
-                      Be the first to add a tactic, event prep note, or build order.
-                    </p>
-                  </div>
-                  <Button onClick={() => setTipDialogOpen(true)}>
-                    <NotePencil size={16} />
-                    Add the first tip
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
         </section>
       </main>
     </div>

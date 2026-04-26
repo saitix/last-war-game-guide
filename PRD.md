@@ -4,6 +4,11 @@
 
 Build an app that teaches players about Last War gameplay, season mechanics, events, hero strategy, and progression tips. The experience should be organized, searchable, mobile-friendly, visually appealing, and useful to both new and experienced players.
 
+## Product title
+
+- Main web title : Commander Nexus
+
+
 ## Source material
 
 The canonical local content source is:
@@ -45,15 +50,27 @@ Players should be able to:
 
 The app should present content in clear sections such as:
 
-- Season mechanics
-- Events
-- Heroes
+### Main menu entries
+
+- All Intel ( organized in tabs for each season)
+- Season : the seasons (all of them since inception)
+    1. Season mechanics
+    2. Season tabs : like Season 1, Season 2 ... etc
+- Heroes : All heroes depicted with details
+- Events : All events from the mirror sorted by timeline (most recent come first)- Events
 - Gameplay tips
 - Progression and optimization
 - FAQ
-- Community tips
 
 Success target: important topics should be easy to reach with minimal navigation depth.
+
+
+### Heroes
+
+- Include all heroes included in the mirror
+- Explain the heroes types section
+- Each hero should have the following specs: ability, type, rarity, skills, gear
+- Hero images are a must
 
 ### Search
 
@@ -63,13 +80,9 @@ Search should help users find specific topics, heroes, events, and advice quickl
 
 The app should include a dedicated FAQ section with concise, expandable answers to common player questions.
 
-### Community tips
-
-The product should leave room for a user tip submission flow so players can contribute useful strategies and advice.
-
 ### Dark mode
 
-Dark mode is required and should preserve readability and visual polish.
+Dark mode is required and should preserve readability and visual polish. Use a day/night toggle
 
 ### Mobile optimization
 
@@ -98,3 +111,8 @@ The visual direction should feel tactical and polished, matching the Last War th
 - Keep navigation simple for players of all skill levels
 - Preserve mobile usability when introducing new sections or interactions
 - Treat the local mirror and this PRD as the default reference for future development work
+
+## Exclusions from the mirror
+
+- Exclude the Community stuff
+- Exclude 'Contact Us'
