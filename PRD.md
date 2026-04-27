@@ -79,11 +79,12 @@ Success target: important topics should be easy to reach with minimal navigation
 
   1. Season mechanics
   2. Season tabs : like Season 1, Season 2 ... etc
-  3. When clicking a season, a modal opens with : 
+  3. When clicking a season, a modal opens with :
      - season title
      - season details
      - what's new (buildings, ressources, etc... )
      - per week (week1, week2, etc... ) - manual, pictures
+  4. Season per week articles. If there is data to mention a per week article, then open its details as a modal.
 
 ### Events
 
@@ -116,7 +117,8 @@ The experience must be designed for mobile use first, with comfortable navigatio
 
 ### Mirrored media usage
 
-When images are used in the app, prefer mirrored images and assets from `mirror/www.lastwartutorial.com`.
+- When images are used in the app, prefer mirrored images and assets from `mirror/www.lastwartutorial.com` (except for heroes, where the fandom source has priority)
+- Images, in the modal, should not be vertically truncated. Rather use horizontal padding to keep the aspect ratio, but the image content should be displayed in full (and not cut off hero heads ... or game ressources screengrabs cutoff in the most important corner)
 
 ## Experience qualities
 
@@ -149,4 +151,5 @@ In the footer of the site, mention in clear: "The content of this site was adapt
 - Exclude 'Contact Us'
 - Exclude Legal
 - Exclude x min (information taken from various sources, we don't need to know how long ago the info was updated, or how long it takes to read)
+- Exclude/avoid texts like 'click here' that does not do anything (i.e. avoid mentioning a link that does not exist)
   

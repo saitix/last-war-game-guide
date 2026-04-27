@@ -148,10 +148,11 @@ function GuideDetailContent({ guide }: { guide: Guide }) {
   return (
     <div className="space-y-6">
       {guide.coverImage ? (
-        <div className="relative h-72 overflow-hidden rounded-t-lg">
-          <img src={guide.coverImage} alt={guide.title} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-2 p-5">
+        <div className="space-y-3 rounded-t-lg bg-muted/20 p-4">
+          <div className="flex max-h-72 justify-center overflow-hidden rounded-lg">
+            <img src={guide.coverImage} alt={guide.title} className="max-h-72 max-w-full object-contain" />
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Badge>{sectionTag(guide)}</Badge>
           </div>
         </div>
@@ -195,11 +196,13 @@ function GuideDetailContent({ guide }: { guide: Guide }) {
                 <AccordionTrigger>{section.title}</AccordionTrigger>
                 <AccordionContent className="space-y-4">
                   {section.image?.src ? (
-                    <img
-                      src={section.image.src}
-                      alt={section.image.alt}
-                      className="max-h-72 w-full rounded-xl border border-border/60 object-cover"
-                    />
+                    <div className="flex justify-center rounded-xl border border-border/60 bg-muted/20 p-4">
+                      <img
+                        src={section.image.src}
+                        alt={section.image.alt}
+                        className="max-h-72 max-w-full rounded-lg object-contain"
+                      />
+                    </div>
                   ) : null}
                   {section.body.map((paragraph) => (
                     <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
@@ -221,7 +224,9 @@ function GuideDetailContent({ guide }: { guide: Guide }) {
             <div className="grid gap-3 sm:grid-cols-2">
               {guide.gallery.slice(0, 6).map((image) => (
                 <figure key={`${image.src}-${image.alt}`} className="overflow-hidden rounded-xl border border-border/60">
-                  <img src={image.src} alt={image.alt} className="h-44 w-full object-cover" />
+                  <div className="flex h-44 justify-center bg-muted/20 p-3">
+                    <img src={image.src} alt={image.alt} className="max-h-full max-w-full rounded-lg object-contain" />
+                  </div>
                   <figcaption className="border-t border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
                     {image.alt}
                   </figcaption>
@@ -819,11 +824,13 @@ function App() {
                     <div className="mt-6 grid gap-5 md:grid-cols-[0.42fr_0.58fr]">
                       <div className="space-y-4">
                         {selectedHero.image?.src ? (
-                          <img
-                            src={selectedHero.image.src}
-                            alt={selectedHero.name}
-                            className="max-h-96 w-full rounded-xl border border-border/60 object-cover"
-                          />
+                          <div className="flex justify-center rounded-xl border border-border/60 bg-muted/20 p-4">
+                            <img
+                              src={selectedHero.image.src}
+                              alt={selectedHero.name}
+                              className="max-h-96 max-w-full rounded-lg object-contain"
+                            />
+                          </div>
                         ) : null}
                         <p className="text-sm leading-7 text-muted-foreground">{selectedHero.description}</p>
 
@@ -881,11 +888,13 @@ function App() {
                                   <div className="space-y-2">
                                     <p className="font-medium">{weapon.title}</p>
                                     {weapon.image?.src ? (
-                                      <img
-                                        src={weapon.image.src}
-                                        alt={weapon.image.alt}
-                                        className="max-h-64 w-full rounded-lg border border-border/50 object-cover"
-                                      />
+                                      <div className="flex justify-center rounded-lg border border-border/50 bg-muted/20 p-3">
+                                        <img
+                                          src={weapon.image.src}
+                                          alt={weapon.image.alt}
+                                          className="max-h-64 max-w-full rounded-lg object-contain"
+                                        />
+                                      </div>
                                     ) : null}
                                   </div>
                                   {weapon.body.map((paragraph) => (
@@ -913,11 +922,13 @@ function App() {
                                   <div className="space-y-2">
                                     <p className="font-medium">{upgrade.title}</p>
                                     {upgrade.image?.src ? (
-                                      <img
-                                        src={upgrade.image.src}
-                                        alt={upgrade.image.alt}
-                                        className="max-h-64 w-full rounded-lg border border-border/50 object-cover"
-                                      />
+                                      <div className="flex justify-center rounded-lg border border-border/50 bg-muted/20 p-3">
+                                        <img
+                                          src={upgrade.image.src}
+                                          alt={upgrade.image.alt}
+                                          className="max-h-64 max-w-full rounded-lg object-contain"
+                                        />
+                                      </div>
                                     ) : null}
                                   </div>
                                   {upgrade.body.map((paragraph) => (
@@ -990,11 +1001,13 @@ function App() {
                     <div className="grid gap-6 lg:grid-cols-[0.42fr_0.58fr]">
                       <div className="space-y-4">
                         {selectedSeasonGuide.coverImage ? (
-                          <img
-                            src={selectedSeasonGuide.coverImage}
-                            alt={selectedSeasonGuide.title}
-                            className="max-h-96 w-full rounded-xl border border-border/60 object-cover"
-                          />
+                          <div className="flex justify-center rounded-xl border border-border/60 bg-muted/20 p-4">
+                            <img
+                              src={selectedSeasonGuide.coverImage}
+                              alt={selectedSeasonGuide.title}
+                              className="max-h-96 max-w-full rounded-lg object-contain"
+                            />
+                          </div>
                         ) : null}
                         <div className="rounded-xl border border-border/60 bg-background/70 p-4">
                           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -1025,11 +1038,13 @@ function App() {
                               <div key={section.id} className="space-y-3 rounded-lg border border-border/50 p-3">
                                 <p className="font-medium">{section.title}</p>
                                 {section.image?.src ? (
-                                  <img
-                                    src={section.image.src}
-                                    alt={section.image.alt}
-                                    className="max-h-56 w-full rounded-lg border border-border/50 object-cover"
-                                  />
+                                  <div className="flex justify-center rounded-lg border border-border/50 bg-muted/20 p-3">
+                                    <img
+                                      src={section.image.src}
+                                      alt={section.image.alt}
+                                      className="max-h-56 max-w-full rounded-lg object-contain"
+                                    />
+                                  </div>
                                 ) : null}
                                 {section.body.map((paragraph) => (
                                   <p key={paragraph} className="text-sm leading-7 text-muted-foreground">
@@ -1051,11 +1066,13 @@ function App() {
                               <button
                                 key={guide.id}
                                 type="button"
-                                onClick={() => setSelectedGuideId(guide.id)}
+                                onClick={() => openSeasonGuide(guide.id)}
                                 className="overflow-hidden rounded-xl border border-border/60 text-left transition hover:border-accent/60 hover:bg-accent/5"
                               >
                                 {guide.coverImage ? (
-                                  <img src={guide.coverImage} alt={guide.title} className="h-32 w-full object-cover" />
+                                  <div className="flex h-32 justify-center bg-muted/20 p-3">
+                                    <img src={guide.coverImage} alt={guide.title} className="max-h-full max-w-full rounded-lg object-contain" />
+                                  </div>
                                 ) : null}
                                 <div className="space-y-2 p-3">
                                   <p className="font-medium">{guide.title}</p>
