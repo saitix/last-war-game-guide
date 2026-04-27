@@ -411,6 +411,11 @@ function App() {
     setGuideDialogOpen(true);
   }
 
+  function openWeeklyGuideModal(guideId: string) {
+    setSeasonDialogOpen(false);
+    openGuideDialog(guideId);
+  }
+
   function openGuideExperience(guideId: string) {
     const guide = mirrorContent.guides.find((entry) => entry.id === guideId);
     if (!guide) return;
@@ -1066,7 +1071,7 @@ function App() {
                               <button
                                 key={guide.id}
                                 type="button"
-                                onClick={() => openSeasonGuide(guide.id)}
+                                onClick={() => openWeeklyGuideModal(guide.id)}
                                 className="overflow-hidden rounded-xl border border-border/60 text-left transition hover:border-accent/60 hover:bg-accent/5"
                               >
                                 {guide.coverImage ? (

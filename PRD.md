@@ -84,7 +84,7 @@ Success target: important topics should be easy to reach with minimal navigation
      - season details
      - what's new (buildings, ressources, etc... )
      - per week (week1, week2, etc... ) - manual, pictures
-  4. Season per week articles. If there is data to mention a per week article, then open its details as a modal.
+  4. Season per week articles. If there is data to mention a per week article, then open its details as a modal. Make sure that the modal opens and does not trigger just an anchor in the already opened season modal
 
 ### Events
 
