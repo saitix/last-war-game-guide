@@ -18,10 +18,10 @@ Secondary source of truth (for heroes) is the local mirror at `mirror/fandom/her
 
 ## Mirror and build workflow
 
-1. Refresh the local mirror with `bash scripts/sync-website.sh`
+1. Refresh the local mirror with `bash scripts/build-mirror.sh` or `npm run build:mirror`
 2. Build the app from the local mirror with `npm run build`
 
-`npm run build` now generates structured guide data from `mirror/www.lastwartutorial.com` and then runs the React/Vite build.
+`npm run build` now generates structured guide data from **all mirrors** and then runs the React/Vite build.
 
 Additional commands:
 
