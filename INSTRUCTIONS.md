@@ -22,8 +22,11 @@ Create an app that teaches users about Last War gameplay, season mechanics, even
 `mirror/www.lastwartutorial.com` is the source of truth for content and assets.
 
 - Use the local mirror instead of the live website
+- When refreshing the mirror, treat `https://www.lastwartutorial.com/` as the canonical source host to avoid redirect-loop artifacts from the non-`www` domain
 - Pull images from the mirrored asset paths
 - Keep content organization aligned with the mirrored information architecture when practical
+- For heroes, use `mirror/www.lastwartutorial.com/heroes/index.html` as the primary source and `mirror/fandom/heroes` as the secondary enrichment source
+- For hero imagery, prefer local fandom hero images under `mirror/fandom/heroes/images` first, and fall back to mirrored WordPress hero images only when fandom images are unavailable
 
 ## Build instructions
 
@@ -31,6 +34,7 @@ The build workflow is mirror-first.
 
 1. Refresh the local content source with `bash scripts/sync-website.sh`
 2. Build the distributable app output with `npm run build`
+3. If the raw mirrored website itself needs packaging, use `bash scripts/build-mirror.sh` or `npm run build:mirror`
 
 Build implementation details:
 
@@ -38,6 +42,7 @@ Build implementation details:
 - `scripts/generate-mirror-content.mjs` extracts structured guide data from the local mirror for the app
 - `npm run build` generates mirror-backed content data and then runs the React/Vite app build
 - `npm run build:mirror` remains available if the raw mirrored site needs to be packaged into `dist/`
+- `scripts/build-mirror.sh` includes a repair pass for missed WordPress image references and missing `srcset` variants before packaging the raw mirror output
 
 ## PRD usage
 

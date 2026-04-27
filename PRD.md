@@ -84,7 +84,7 @@ Success target: important topics should be easy to reach with minimal navigation
      - season details
      - what's new (buildings, ressources, etc... )
      - per week (week1, week2, etc... ) - manual, pictures
-  4. Season per week articles. If there is data to mention a per week article, then open its details as a modal. Make sure that the modal opens and does not trigger just an anchor in the already opened season modal
+  4. Season per week articles. If there is data to mention a per week article, then open its details in the guide-detail modal and close the season modal. Do not trigger only an anchor or inline change inside the already opened season modal.
 
 ### Events
 
@@ -134,7 +134,7 @@ The visual direction should feel tactical and polished, matching the Last War th
 
 ## Copyright
 
-In the footer of the site, mention in clear: "The content of this site was adapted from https://www.lastwartutorial.com/ and https://last-war-survival.fandom.com/ (as links)
+In the footer of the site, clearly state: `The content of this site was adapted from https://www.lastwartutorial.com/ and https://last-war-survival.fandom.com/`, with both URLs rendered as links.
 
 ## Implementation guidance
 
